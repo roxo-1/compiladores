@@ -121,8 +121,8 @@ A decisão adotada foi **reaproveitar os campos existentes sempre que possível*
 | Elemento                               | Representação utilizada         | Justificativa                                                             |
 | -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
 | Cadeias de caracteres                  | `TOKEN_ID`                      | Reaproveita o mecanismo de armazenamento utilizado para identificadores   |
-| `<-`                                   | `TOKEN_OP_REL`                  | Utiliza o campo `op_code` com um código específico para atribuição        |
-| `<>`                                   | `TOKEN_OP_REL`                  | Reaproveita a estrutura dos operadores relacionais                        |
+| `<-`                                   | `TOKEN_OP_REL`  e  `OP_ASSIGN`  | Utiliza o campo `op_code` com um código específico para atribuição        |
+| `<>`                                   | `TOKEN_OP_REL`  e  `OP_NE`      | Reaproveita a estrutura dos operadores relacionais                        |
 | Operadores aritméticos e delimitadores | `TOKEN_OP_REL`                  | O próprio caractere é armazenado no campo `op_code`                       |
 | Palavras reservadas                    | `TOKEN_KEYWORD` + `lexemaAtual` | Permite que o sintático identifique qual palavra reservada foi encontrada |
 
