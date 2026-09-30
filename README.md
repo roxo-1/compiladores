@@ -63,12 +63,6 @@ Depois de compilar, o programa recebe o arquivo-fonte MiniVisualg como argumento
 ./compilador arquivo.txt
 ```
 
-No Windows/MinGW:
-
-```bash
-compilador.exe arquivo.txt
-```
-
 O nome do arquivo deve ser informado pela linha de comando, conforme especificado no enunciado.
 
 A análise é realizada sobre o arquivo fornecido e os *tokens* reconhecidos são apresentados no terminal e também armazenados em um arquivo de saída `.lex`.
