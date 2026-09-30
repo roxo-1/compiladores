@@ -261,18 +261,15 @@ Os testes devem considerar as principais construções apresentadas nos exemplos
 Entre os exemplos fornecidos no enunciado estão `BoasVindas`, `CadastroSimples`, `TextoELogico`, `TesteDeLogica`, `CalculadoraBasica`, `ComparaTextosENumeros`, `ParqueDeDiversoes`, `VerificaChuva`, `ContagemSimples`, `ContagemRegressiva`, `ContadorManual`, `ListaNomes`, `MediaNotas`, exemplos de procedimentos e exemplos de funções.
 A tabela abaixo pode ser preenchida com o resultado dos testes efetivamente realizados:
 
-| Teste               | Etapa            | Resultado   |
-| ------------------- | ---------------- | ----------- |
-| `BoasVindas`        | Léxico/Sintático | A preencher |
-| `CadastroSimples`   | Léxico/Sintático | A preencher |
-| `CalculadoraBasica` | Léxico/Sintático | A preencher |
-| `VerificaChuva`     | Léxico/Sintático | A preencher |
-| `ContagemSimples`   | Léxico/Sintático | A preencher |
-| `ContadorManual`    | Léxico/Sintático | A preencher |
-| `ListaNomes`        | Léxico/Sintático | A preencher |
-| `MediaNotas`        | Léxico/Sintático | A preencher |
-| Procedimentos       | Léxico/Sintático | A preencher |
-| Funções             | Léxico/Sintático | A preencher |
+| Teste                       | Etapa            | Resultado   |
+| -------------------         | ---------------- | ----------- |
+| `RotinasComRetorno`         | Léxico/Sintático | Funciona    |
+| `nome_do_algoritmo`         | Léxico/Sintático | Funciona    |
+| `CalculadoraBasica`         | Léxico/Sintático | Funciona    |
+| `ProcedimentosSemParametros`| Léxico/Sintático | Funciona    |
+| `ListaNomes`                | Léxico/Sintático | Funciona    |
+| `ContagemSimples`           | Léxico/Sintático | Funciona    |
+| `ParqueDeDiversoes`         | Léxico/Sintático | Funciona    |
 
 ---
 
