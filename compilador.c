@@ -19,6 +19,9 @@ typedef enum {
     TOKEN_NUM_INT,
     TOKEN_NUM_FLOAT,
     TOKEN_OP_REL,
+    TOKEN_OP_ARIT,
+    TOKEN_OP_LOG,
+    TOKEN_OP_ATRIBUTION,
     TOKEN_KEYWORD
 } TokenNome;
 
@@ -30,6 +33,24 @@ typedef enum {
     OP_GE, // >= 
 } OpRelType;
 
+typedef enum {
+    OP_SUM, // +
+    OP_MINUS, // -
+    OP_DIV, // /
+    OP_MULT, // * 
+} OpAritType;
+
+
+typedef enum {
+    OP_E, // E
+    OP_OU, // OU
+} OpLogType;
+
+
+typedef enum {
+    OP_AT, // E
+} OpAtribuition;
+
 typedef struct {
     TokenNome type; //Nome do token
     int line; // Para tratamento de erros
@@ -38,7 +59,10 @@ typedef struct {
         int table_index; // Índice para Tabela de Símbolos
         int int_value; //Valor literal convertido
         double float_value; //Valor literal convertido
-        OpRelType op_code; //operador relacional específico
+        OpRelType op_rel; //operador relacional específico
+        OpAritType op_arit;//operador aritmetico
+        OpLogType op_log; // operador logico
+        OpAtribuition op_at; // atribuicao
     } attribute;
 
 } Token;
