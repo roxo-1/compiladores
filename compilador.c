@@ -25,7 +25,14 @@ typedef enum {
     TOKEN_KEYWORD,
     TOKEN_DELIMITADORES,
     TOKEN_COMENTARIO,
+    TOKEN_BOOLEANO,
 } TokenNome;
+
+
+typedef enum {
+    TRUE, // verdadeiro
+    FALSO, // falso
+} Booleano;
 
 typedef enum {
     OP_LT, // <
@@ -82,6 +89,7 @@ typedef struct {
         OpAtribuition op_at; // atribuicao
         Delimitadores delimitadores;
         Comentario comentario;
+        Booleano booleano;
     } attribute;
 
 } Token;
@@ -623,51 +631,166 @@ Procedimentos: procedimento id abreParenteses  (id doisPontos tipo | virgula)+ f
 Funções: funcao id abreParenteses (id doisPontos tipo | virgula)+ fechaParenteses doisPontos tipo inicio codigo fimfuncao
 
 */
-// tipo_base -> inteiro | real | caractere | logico
-void tipoBase() { //
+void consumir(TokenNome tipoEsperado) {
+    if (tokenAtual.type == tipoEsperado) {
+        tokenAtual = proximoToken();
+    } else {
+        erro("Token inesperado.");
+    }
+}
+//tipo: inteiro | real | logico
+void tipo() {
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        // Assume-se que as palavras-chave 'inteiro', 'real' e 'logico' 
+        // são identificadas pela tabela de símbolos ou valor numérico no atributo.
+        tokenAtual = proximoToken();
+    } else {
+        erro("Esperado um tipo (inteiro, real ou logico).");
+    }
 }
 
-// tipo -> tipo_base | vetor '[' num_int '..' num_int ']' de tipo_base
-void tipo() {//
+// Procedimentos: procedimento id abreParenteses  (id doisPontos tipo | virgula)+ fechaParenteses codigo fimprocedimento
+void procedimento() {
+    consumir(TOKEN_KEYWORD); // 'procedimento'
+    consumir(TOKEN_ID);      // id do procedimento
+
+    // abreParenteses
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == abreParenteses) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado '(' na declaracao do procedimento.");
+    }
+
+    // Lista de parâmetros: (id doisPontos tipo | virgula)+
+    do {
+        if (tokenAtual.type == TOKEN_ID) {
+            consumir(TOKEN_ID);
+            
+            // doisPontos
+            if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == doisPontos) {
+                consumir(TOKEN_DELIMITADORES);
+                tipo();
+            } else {
+                erro("Esperado ':' apos o identificador do parametro.");
+            }
+        } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
+            consumir(TOKEN_DELIMITADORES);
+        } else {
+            erro("Parametro invalido na declaracao do procedimento.");
+        }
+    } while (tokenAtual.type == TOKEN_ID || 
+            (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
+
+    // fechaParenteses
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado ')' na declaracao do procedimento.");
+    }
+
+    // Corpo do procedimento
+    codigo();
+
+    // fimprocedimento
+    consumir(TOKEN_KEYWORD); // 'fimprocedimento'
 }
 
-void idLista() {//
-}
+//Funções: funcao id abreParenteses (id doisPontos tipo | virgula)+ fechaParenteses doisPontos tipo inicio codigo fimfuncao
+void funcao() {
+    consumir(TOKEN_KEYWORD); // 'funcao'
+    consumir(TOKEN_ID);      // id da função
 
-// [x] declaracao_lista -> id_lista ':' tipo
-void declaracaoLista() {//
-}
+    // abreParenteses
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == abreParenteses) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado '(' na declaracao da funcao.");
+    }
 
-// parametro -> id ':' tipo_base
-void parametro() {//
-}
+    // Lista de parâmetros
+    do {
+        if (tokenAtual.type == TOKEN_ID) {
+            consumir(TOKEN_ID);
+            
+            if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == doisPontos) {
+                consumir(TOKEN_DELIMITADORES);
+                tipo();
+            } else {
+                erro("Esperado ':' apos o identificador do parametro.");
+            }
+        } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
+            consumir(TOKEN_DELIMITADORES);
+        } else {
+            erro("Parametro invalido na declaracao da funcao.");
+        }
+    } while (tokenAtual.type == TOKEN_ID || 
+            (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
 
-// parametros -> parametro (',' parametro)*
-void parametros() {//
-}
+    // fechaParenteses
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado ')' na declaracao da funcao.");
+    }
 
-// declaracao_var -> var declaracao_lista+
-void declaracaoVar() {//
-}
+    // doisPontos para o tipo de retorno
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == doisPontos) {
+        consumir(TOKEN_DELIMITADORES);
+        tipo(); // Tipo de retorno da função
+    } else {
+        erro("Esperado ':' indicando o tipo de retorno da funcao.");
+    }
 
-// declaracao_procedimento -> procedimento id ('(' parametros ')')? inicio comando* fimprocedimento
-void declaracaoProcedimento() {//
-}
+    // Bloco de inicio e codigo
+    consumir(TOKEN_KEYWORD); // 'inicio'
+    codigo();
 
-// declaracao_funcao -> funcao id '(' parametros? ')' ':' tipo_base inicio comando* fimfuncao
-void declaracaoFuncao() { // 'fimfuncao'
+    // fimfuncao
+    consumir(TOKEN_KEYWORD); // 'fimfuncao'
 }
 /*
 3. IMPLEMENTACAO DA GRAMATICA - ESTRUTURA GERAL
-algoritmoAux: algoritmo aspas cadeia aspas var inicio fimalgoritmo
+algoritmoAux: 'algoritmo' aspas cadeia aspas var inicio fimalgoritmo
 
 */
-// algoritmo -> algoritmo cadeia declaracao* inicio comando* fimalgoritmo
+//algoritmo: 'algoritmo' aspas cadeia aspas var inicio fimalgoritmo
 void algoritmo() {
-    //
-}
-void declaracao() {
-    //
+    // Reconhece palavra-chave 'algoritmo'
+    consumir(TOKEN_KEYWORD); 
+    
+    // aspas
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == aspas) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado aspas de abertura no nome do algoritmo.");
+    }
+
+    // cadeia (identificador ou literal de texto)
+    if (tokenAtual.type == TOKEN_ID) {
+        consumir(TOKEN_ID);
+    } else {
+        erro("Esperado nome do algoritmo (cadeia).");
+    }
+
+    // aspas
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == aspas) {
+        consumir(TOKEN_DELIMITADORES);
+    } else {
+        erro("Esperado aspas de fechamento no nome do algoritmo.");
+    }
+
+    // Bloco var (opcional ou obrigatório conforme o fluxo)
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        consumir(TOKEN_KEYWORD); // 'var'
+        id_lista();
+    }
+
+    // Bloco inicio
+    consumir(TOKEN_KEYWORD); // 'inicio'
+    codigo();
+
+    // Bloco fimalgoritmo
+    consumir(TOKEN_KEYWORD); // 'fimalgoritmo'
 }
 /*
 7. TRATAMENTO DE ERROS SINTATICOS
