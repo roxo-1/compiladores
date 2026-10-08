@@ -122,6 +122,7 @@ void declaracaoProcedimento();
 void declaracaoFuncao(); 
 void algoritmo(); 
 void declaracao();
+void codigo();
 
 
 /*
@@ -529,9 +530,13 @@ int checarPalavraReservada(){
 }
 
 //VERIFICA SE O TOKEN ATUAL É UM DELIMITADOR OU OPERADOR ESPECIFICO
-int checarDelimitadorOperador(Delimitadores delimitador){//
+int checarDelimitadorOperador(Delimitadores delimitador) {
+    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == delimitador) {
+        nextToken();
+        return 1;
+    }
+    return 0;
 }
-
 
 /*
 6. IMPLEMENTACAO DA GRAMATICA - EXPRESSOES
@@ -612,66 +617,273 @@ void expressao(){
 }
 
 /*
-5. IMPLEMENTACAO DA GRAMATICA - COMANDOS
-codigo: (leitura | escrita | condicional | senao | repeticao_para | repeticao_enquanto | retorno | atribuicao)*
-var: 'var' id_lista
-id_lista: id (virgula id)*
-Leitura: leia abreParenteses id fechaParenteses
-Escrita: (escreva | escreval) abreParenteses aspas (cadeia+ | virgula*)+ aspas fechaParenteses
-Condicional: se abreParenteses (id | inteiro| real) (operadorRelacional | 'MOD') (id | inteiro| real) fechaParenteses entao codigo senao
- 
-senao: codigo| fimse
+ * 5. IMPLEMENTAÇÃO DA GRAMÁTICA - COMANDOS
+ */
 
-Repetição_para: para id de inteiro ate inteiro passo
-
-passo: 'passo' inteiro faca | faca
-
-faca: codigo fim
-
-fim: fimpara | fimenquanto
-
-Repeticao_enquanto: enquanto abreParenteses id operadorRelacional inteiro fecha parenteses codigo fim
-Retorne: logico | id operacaoAritmetica id 
-*/
-// Protótipos das funções de comandos e expressões
-
+// Função auxiliar para verificar se o token atual é um delimitador específico
+int ehDelimitador(Delimitadores d) {
+    return (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == d);
+}
 
 // [X] variavel -> id ('[' expressao ']')?
-void variavel() {//
+void variavel() {
+    casaToken(TOKEN_ID);
+    if (ehDelimitador(abreColchetes)) {
+        nextToken(); // consome '['
+        expressao();
+        if (ehDelimitador(fechaColchetes)) {
+            nextToken(); // consome ']'
+        } else {
+            erroSintatico("Esperado ']' apos indice do vetor.");
+        }
+    }
 }
 
 // [X] atribuicao -> variavel '<-' expressao
-void atribuicao() {//
+void atribuicao() {
+    variavel();
+    if (tokenAtual.type == TOKEN_OP_REL || tokenAtual.type == TOKEN_OP_ATRIBUTION) {
+        nextToken(); // consome '<-'
+    } else {
+        erroSintatico("Operador de atribuicao '<-' esperado.");
+    }
+    expressao();
 }
 
 // [X] leitura -> leia '(' variavel ')'
-void leitura() {//
+void leitura() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "leia") == 0) {
+        nextToken(); // consome 'leia'
+    } else {
+        erroSintatico("Esperado 'leia'.");
+    }
+
+    if (ehDelimitador(abreParenteses)) {
+        nextToken(); // consome '('
+    } else {
+        erroSintatico("Esperado '(' apos 'leia'.");
+    }
+
+    variavel();
+
+    if (ehDelimitador(fechaParenteses)) {
+        nextToken(); // consome ')'
+    } else {
+        erroSintatico("Esperado ')' apos variavel em 'leia'.");
+    }
 }
 
 // [X] escrita -> (escreva | escreval) '(' expressao (',' expressao)* ')'
-void escrita() {//
+void escrita() {
+    if (tokenAtual.type == TOKEN_KEYWORD && 
+       (strcmp(lexemaAtual, "escreva") == 0 || strcmp(lexemaAtual, "escreval") == 0)) {
+        nextToken(); // consome 'escreva' ou 'escreval'
+    } else {
+        erroSintatico("Esperado 'escreva' ou 'escreval'.");
+    }
+
+    if (ehDelimitador(abreParenteses)) {
+        nextToken(); // consome '('
+    } else {
+        erroSintatico("Esperado '(' em comando de escrita.");
+    }
+
+    expressao();
+
+    while (ehDelimitador(virgula)) {
+        nextToken(); // consome ','
+        expressao();
+    }
+
+    if (ehDelimitador(fechaParenteses)) {
+        nextToken(); // consome ')'
+    } else {
+        erroSintatico("Esperado ')' ao fechar comando de escrita.");
+    }
 }
 
 // [X] condicional -> se '(' expressao ')' entao comando* (senao comando*)? fimse
-void condicional() {//
+void condicional() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "se") == 0) {
+        nextToken(); // consome 'se'
+    } else {
+        erroSintatico("Esperado 'se'.");
+    }
+
+    if (ehDelimitador(abreParenteses)) {
+        nextToken(); // consome '('
+    } else {
+        erroSintatico("Esperado '(' apos 'se'.");
+    }
+
+    expressao();
+
+    if (ehDelimitador(fechaParenteses)) {
+        nextToken(); // consome ')'
+    } else {
+        erroSintatico("Esperado ')' apos expressao condicional.");
+    }
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "entao") == 0) {
+        nextToken(); // consome 'entao'
+    } else {
+        erroSintatico("Esperado 'entao'.");
+    }
+
+    codigo(); // Bloco de comandos no ramo 'entao'
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "senao") == 0) {
+        nextToken(); // consome 'senao'
+        codigo();    // Bloco de comandos no ramo 'senao'
+    }
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimse") == 0) {
+        nextToken(); // consome 'fimse'
+    } else {
+        erroSintatico("Esperado 'fimse'.");
+    }
 }
 
 // [X] repeticao_para -> para id de expressao ate expressao (passo expressao)? faca comando* fimpara
-void repeticaoPara() {//
+void repeticaoPara() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "para") == 0) {
+        nextToken(); // consome 'para'
+    } else {
+        erroSintatico("Esperado 'para'.");
+    }
+
+    casaToken(TOKEN_ID);
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "de") == 0) {
+        nextToken(); // consome 'de'
+    } else {
+        erroSintatico("Esperado 'de' no laco 'para'.");
+    }
+
+    expressao();
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "ate") == 0) {
+        nextToken(); // consome 'ate'
+    } else {
+        erroSintatico("Esperado 'ate' no laco 'para'.");
+    }
+
+    expressao();
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "passo") == 0) {
+        nextToken(); // consome 'passo'
+        expressao();
+    }
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "faca") == 0) {
+        nextToken(); // consome 'faca'
+    } else {
+        erroSintatico("Esperado 'faca' no laco 'para'.");
+    }
+
+    codigo();
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimpara") == 0) {
+        nextToken(); // consome 'fimpara'
+    } else {
+        erroSintatico("Esperado 'fimpara'.");
+    }
 }
 
 // [X] repeticao_enquanto -> enquanto '(' expressao ')' faca comando* fimenquanto
-void repeticaoEnquanto() {//
+void repeticaoEnquanto() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "enquanto") == 0) {
+        nextToken(); // consome 'enquanto'
+    } else {
+        erroSintatico("Esperado 'enquanto'.");
+    }
+
+    if (ehDelimitador(abreParenteses)) {
+        nextToken(); // consome '('
+    } else {
+        erroSintatico("Esperado '(' apos 'enquanto'.");
+    }
+
+    expressao();
+
+    if (ehDelimitador(fechaParenteses)) {
+        nextToken(); // consome ')'
+    } else {
+        erroSintatico("Esperado ')' apos expressao do 'enquanto'.");
+    }
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "faca") == 0) {
+        nextToken(); // consome 'faca'
+    } else {
+        erroSintatico("Esperado 'faca'.");
+    }
+
+    codigo();
+
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimenquanto") == 0) {
+        nextToken(); // consome 'fimenquanto'
+    } else {
+        erroSintatico("Esperado 'fimenquanto'.");
+    }
 }
 
 // [X] retorno -> retorne expressao
-void retorno() {//
+void retorno() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "retorne") == 0) {
+        nextToken(); // consome 'retorne'
+    } else {
+        erroSintatico("Esperado 'retorne'.");
+    }
+
+    expressao();
+}
+
+// [X] comando -> leitura | escrita | condicional | repeticaoPara | repeticaoEnquanto | retorno | atribuicao
+void comando() {
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        if (strcmp(lexemaAtual, "leia") == 0) {
+            leitura();
+        } else if (strcmp(lexemaAtual, "escreva") == 0 || strcmp(lexemaAtual, "escreval") == 0) {
+            escrita();
+        } else if (strcmp(lexemaAtual, "se") == 0) {
+            condicional();
+        } else if (strcmp(lexemaAtual, "para") == 0) {
+            repeticaoPara();
+        } else if (strcmp(lexemaAtual, "enquanto") == 0) {
+            repeticaoEnquanto();
+        } else if (strcmp(lexemaAtual, "retorne") == 0) {
+            retorno();
+        } else {
+            erroSintatico("Comando nao reconhecido.");
+        }
+    } else if (tokenAtual.type == TOKEN_ID) {
+        atribuicao();
+    } else {
+        erroSintatico("Inicio de comando invalido.");
+    }
 }
 
 /*
-[X] Decisão para diferenciar atribuição de chamada quando ambos começam com ID:
+ [X] Decisão para diferenciar atribuição de chamada quando ambos começam com ID:
+     A função codigo() consome uma sequência de comandos até encontrar palavras
+     que sinalizam o encerramento de um bloco (ex: fimse, fimalgoritmo, etc.) ou o EOF.
 */
-void codigo() {//
+void codigo() {
+    while (tokenAtual.type != TOKEN_EOF) {
+        if (tokenAtual.type == TOKEN_KEYWORD) {
+            // Se encontrar palavra que encerra bloco de comandos atual, interrompe o loop
+            if (strcmp(lexemaAtual, "fimalgoritmo") == 0 ||
+                strcmp(lexemaAtual, "senao") == 0 ||
+                strcmp(lexemaAtual, "fimse") == 0 ||
+                strcmp(lexemaAtual, "fimpara") == 0 ||
+                strcmp(lexemaAtual, "fimenquanto") == 0 ||
+                strcmp(lexemaAtual, "fimprocedimento") == 0 ||
+                strcmp(lexemaAtual, "fimfuncao") == 0) {
+                break;
+            }
+        }
+        comando();
+    }
 }
 
 /*
@@ -685,17 +897,19 @@ void consumir(TokenNome tipoEsperado) {
     if (tokenAtual.type == tipoEsperado) {
         tokenAtual = proximoToken();
     } else {
-        erro("Token inesperado.");
+        erroSintatico("Token inesperado.");
     }
 }
-//tipo: inteiro | real | logico
+//tipo: inteiro | real | logico | caractere
 void tipo() {
-    if (tokenAtual.type == TOKEN_KEYWORD) {
-        // Assume-se que as palavras-chave 'inteiro', 'real' e 'logico' 
-        // são identificadas pela tabela de símbolos ou valor numérico no atributo.
-        tokenAtual = proximoToken();
+    if (tokenAtual.type == TOKEN_KEYWORD && 
+       (strcmp(lexemaAtual, "inteiro") == 0 || 
+        strcmp(lexemaAtual, "real") == 0 || 
+        strcmp(lexemaAtual, "caractere") == 0 || 
+        strcmp(lexemaAtual, "logico") == 0)) {
+        nextToken(); // consome o tipo da variável
     } else {
-        erro("Esperado um tipo (inteiro, real ou logico).");
+        erroSintatico("Esperado um tipo valido (inteiro, real, caractere ou logico).");
     }
 }
 
@@ -708,7 +922,7 @@ void procedimento() {
     if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == abreParenteses) {
         consumir(TOKEN_DELIMITADORES);
     } else {
-        erro("Esperado '(' na declaracao do procedimento.");
+        erroSintatico("Esperado '(' na declaracao do procedimento.");
     }
 
     // Lista de parâmetros: (id doisPontos tipo | virgula)+
@@ -721,12 +935,12 @@ void procedimento() {
                 consumir(TOKEN_DELIMITADORES);
                 tipo();
             } else {
-                erro("Esperado ':' apos o identificador do parametro.");
+                erroSintatico("Esperado ':' apos o identificador do parametro.");
             }
         } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
             consumir(TOKEN_DELIMITADORES);
         } else {
-            erro("Parametro invalido na declaracao do procedimento.");
+            erroSintatico("Parametro invalido na declaracao do procedimento.");
         }
     } while (tokenAtual.type == TOKEN_ID || 
             (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
@@ -735,7 +949,7 @@ void procedimento() {
     if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
         consumir(TOKEN_DELIMITADORES);
     } else {
-        erro("Esperado ')' na declaracao do procedimento.");
+        erroSintatico("Esperado ')' na declaracao do procedimento.");
     }
 
     // Corpo do procedimento
@@ -754,7 +968,7 @@ void funcao() {
     if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == abreParenteses) {
         consumir(TOKEN_DELIMITADORES);
     } else {
-        erro("Esperado '(' na declaracao da funcao.");
+        erroSintatico("Esperado '(' na declaracao da funcao.");
     }
 
     // Lista de parâmetros
@@ -766,12 +980,12 @@ void funcao() {
                 consumir(TOKEN_DELIMITADORES);
                 tipo();
             } else {
-                erro("Esperado ':' apos o identificador do parametro.");
+                erroSintatico("Esperado ':' apos o identificador do parametro.");
             }
         } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
             consumir(TOKEN_DELIMITADORES);
         } else {
-            erro("Parametro invalido na declaracao da funcao.");
+            erroSintatico("Parametro invalido na declaracao da funcao.");
         }
     } while (tokenAtual.type == TOKEN_ID || 
             (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
@@ -780,7 +994,7 @@ void funcao() {
     if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
         consumir(TOKEN_DELIMITADORES);
     } else {
-        erro("Esperado ')' na declaracao da funcao.");
+        erroSintatico("Esperado ')' na declaracao da funcao.");
     }
 
     // doisPontos para o tipo de retorno
@@ -788,7 +1002,7 @@ void funcao() {
         consumir(TOKEN_DELIMITADORES);
         tipo(); // Tipo de retorno da função
     } else {
-        erro("Esperado ':' indicando o tipo de retorno da funcao.");
+        erroSintatico("Esperado ':' indicando o tipo de retorno da funcao.");
     }
 
     // Bloco de inicio e codigo
@@ -804,43 +1018,72 @@ algoritmoAux: 'algoritmo' aspas cadeia aspas var inicio fimalgoritmo
 
 */
 //algoritmo: 'algoritmo' aspas cadeia aspas var inicio fimalgoritmo
+// algoritmo: 'algoritmo' TOKEN_ID (que já é a string entre aspas) [var] inicio codigo fimalgoritmo
 void algoritmo() {
-    // Reconhece palavra-chave 'algoritmo'
+    // 1. Reconhece a palavra-chave 'algoritmo'
     consumir(TOKEN_KEYWORD); 
-    
-    // aspas
-    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == aspas) {
-        consumir(TOKEN_DELIMITADORES);
-    } else {
-        erro("Esperado aspas de abertura no nome do algoritmo.");
-    }
 
-    // cadeia (identificador ou literal de texto)
+    // 2. Reconhece o nome do algoritmo
+    // Como o Scanner lê "nome_do_algoritmo" entre aspas e já retorna TOKEN_ID,
+    // apenas consumimos esse TOKEN_ID diretamente.
     if (tokenAtual.type == TOKEN_ID) {
-        consumir(TOKEN_ID);
+        nextToken();
     } else {
-        erro("Esperado nome do algoritmo (cadeia).");
+        erroSintatico("Esperado nome do algoritmo (cadeia de texto entre aspas).");
     }
 
-    // aspas
-    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == aspas) {
-        consumir(TOKEN_DELIMITADORES);
+    // 3. Bloco var (opcional)
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "var") == 0) {
+        nextToken(); // consome 'var'
+        
+        // Lê as declarações de variáveis até encontrar 'inicio'
+        while (tokenAtual.type == TOKEN_ID) {
+            idLista();
+            
+            if (tokenAtual.attribute.delimitadores == doisPontos) {
+                nextToken(); // consome ':'
+                tipo();
+            } else {
+                erroSintatico("Esperado ':' apos a lista de identificadores.");
+            }
+        }
+    }
+
+    // 4. Bloco inicio
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "inicio") == 0) {
+        nextToken(); // consome 'inicio'
     } else {
-        erro("Esperado aspas de fechamento no nome do algoritmo.");
+        erroSintatico("Esperado 'inicio' no algoritmo.");
     }
 
-    // Bloco var (opcional ou obrigatório conforme o fluxo)
-    if (tokenAtual.type == TOKEN_KEYWORD) {
-        consumir(TOKEN_KEYWORD); // 'var'
-        id_lista();
-    }
-
-    // Bloco inicio
-    consumir(TOKEN_KEYWORD); // 'inicio'
+    // 5. Corpo de comandos
     codigo();
 
-    // Bloco fimalgoritmo
-    consumir(TOKEN_KEYWORD); // 'fimalgoritmo'
+    // 6. Bloco fimalgoritmo
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimalgoritmo") == 0) {
+        nextToken(); // consome 'fimalgoritmo'
+    } else {
+        erroSintatico("Esperado 'fimalgoritmo'.");
+    }
+}
+// [X] idLista -> id (',' id)*
+void idLista() {
+    // Reconhece o primeiro identificador
+    if (tokenAtual.type == TOKEN_ID) {
+        nextToken();
+    } else {
+        erroSintatico("Esperado identificador na lista de variaveis.");
+    }
+
+    // Enquanto houver vírgula, consome a vírgula e o próximo identificador
+    while (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
+        nextToken(); // consome ','
+        if (tokenAtual.type == TOKEN_ID) {
+            nextToken(); // consome o próximo ID
+        } else {
+            erroSintatico("Esperado identificador apos ',' na lista de variaveis.");
+        }
+    }
 }
 /*
 7. TRATAMENTO DE ERROS SINTATICOS
