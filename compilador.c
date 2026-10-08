@@ -22,7 +22,9 @@ typedef enum {
     TOKEN_OP_ARIT,
     TOKEN_OP_LOG,
     TOKEN_OP_ATRIBUTION,
-    TOKEN_KEYWORD
+    TOKEN_KEYWORD,
+    TOKEN_DELIMITADORES,
+    TOKEN_COMENTARIO,
 } TokenNome;
 
 typedef enum {
@@ -52,6 +54,20 @@ typedef enum {
     OP_AT, // E
 } OpAtribuition;
 
+typedef enum {
+    comentario, // E
+} Comentario;
+
+typedef enum {
+    abreParenteses,
+    fechaParenteses,
+    abreColchetes,
+    fechaColchetes,
+    aspas,
+    virgula,
+    doisPontos,
+} Delimitadores;
+
 typedef struct {
     TokenNome type; //Nome do token
     int line; // Para tratamento de erros
@@ -64,6 +80,8 @@ typedef struct {
         OpAritType op_arit;//operador aritmetico
         OpLogType op_log; // operador logico
         OpAtribuition op_at; // atribuicao
+        Delimitadores delimitadores;
+        Comentario comentario;
     } attribute;
 
 } Token;
@@ -262,23 +280,23 @@ Token proximoToken() {
         if (peek() == '-') {
             fgetc(fonte);
             token.type = TOKEN_OP_REL;
-            token.attribute.op_code = OP_ASSIGN;
+            token.attribute.op_at = TOKEN_OP_ATRIBUTION;
             return token;
         }
         if (peek() == '=') {
             fgetc(fonte);
             token.type = TOKEN_OP_REL;
-            token.attribute.op_code = OP_LE;
+            token.attribute.op_rel = OP_LE;
             return token;
         }
         if (peek() == '>') {
             fgetc(fonte);
             token.type = TOKEN_OP_REL;
-            token.attribute.op_code = OP_NE;
+            token.attribute.op_rel = OP_DIF;
             return token;
         }
         token.type = TOKEN_OP_REL;
-        token.attribute.op_code = OP_LT;
+        token.attribute.op_rel= OP_LT;
         return token;
     }
 
@@ -287,28 +305,52 @@ Token proximoToken() {
         if (peek() == '=') {
             fgetc(fonte);
             token.type = TOKEN_OP_REL;
-            token.attribute.op_code = OP_GE;
+            token.attribute.op_rel = OP_GE;
             return token;
         }
         token.type = TOKEN_OP_REL;
-        token.attribute.op_code = OP_GT;
+        token.attribute.op_rel = OP_GT;
         return token;
     }
 
     // Operador =
     if (c == '=') {
         token.type = TOKEN_OP_REL;
-        token.attribute.op_code = OP_EQ;
+        token.attribute.op_rel = OP_EQ;
         return token;
     }
 
     
     // Operadores e Delimitadores em geral
     if (c == '(' || c == ')' || c == ',' || c == ':' || 
-        c == '[' || c == ']' || c == '+' || c == '-' || 
-        c == '*' || c == '/' || c == '\\') {
-        token.type = TOKEN_OP_REL;
-        token.attribute.op_code = c; // Guarda o próprio caractere como código!
+        c == '[' || c == ']')  {
+        token.type = TOKEN_DELIMITADORES;
+        token.attribute.delimitadores = c; // Guarda o próprio caractere como código!
+        return token;
+    }
+    else if( c == '+'){
+        token.type = OP_SUM;
+        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
+        return token;
+    }
+    else if(c == '-'){
+        token.type = OP_MINUS;
+        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
+        return token;
+    }
+    else if( c == '*'){
+        token.type = OP_MULT;
+        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
+        return token;
+    }
+    else if(c == '/'){
+        token.type = OP_DIV;
+        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
+        return token;
+    }
+    else{   // comentário
+        token.type = TOKEN_COMENTARIO;
+        token.attribute.comentario = c; // Guarda o próprio caractere como código!
         return token;
     }
 
@@ -429,7 +471,7 @@ void imprimirToken(Token t, FILE *saida) {
             sprintf(buffer, "%d# NUM_REAL | %.2f", t.line, t.attribute.float_value);
             break;
         case TOKEN_OP_REL:
-            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | %d", t.line, t.attribute.op_code);
+            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | %d", t.line, t.attribute.delimitadores);
             break;
         default:
             sprintf(buffer, "%d# DESCONHECIDO | 0", t.line);
