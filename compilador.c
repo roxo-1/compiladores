@@ -521,23 +521,19 @@ int checarPalavraReservada(){
 }
 
 //VERIFICA SE O TOKEN ATUAL É UM DELIMITADOR OU OPERADOR ESPECIFICO
-int checarDelimitadorOperador(OpRelType opDe){//
+int checarDelimitadorOperador(Delimitadores delimitador){//
 }
 
 
 /*
 6. IMPLEMENTACAO DA GRAMATICA - EXPRESSOES
-[X] expressao -> expressao_e (OU expressao_e)*
-[X] expressao_e -> expressao_rel (E expressao_rel)*
-[X] expressao_rel -> expressao_arit (opReal expressao_arit)?
-[X] expressao_arit -> termo (('+' | '-') termo)*
-[X] termo -> fator (('*' | '/' | '\' | MOD) fator)*
-[X] fator -> '(' expressao ')'
-           | '-' fator
-           | id ('[' expressao ']' | '(' (expressao (',' expressao)*)? ')')?
-           | num_int | num_real | cadeia | verdadeiro | falso
+Expressao: id operacoes id
+Operacoes: operacaoAritmetica | operacaoRelacional | operacaoLogica
+Operação Aritmética: + | - | * | /
+Operação Relacional: < | <= | == | > | >= | <>
+Atribuição:  id '<-' (inteiro | float | caractere | logico)
+Operações Lógicas: E | OU
 */
-// fator -> '(' expressao ')' | '-' fator | id ('[' expressao ']' | '(' (expressao (',' expressao)*)? ')')? | num_int | num_real | cadeia | verdadeiro | falso
 void fator() {//
 }
 
@@ -559,18 +555,25 @@ void expressao() {//
 
 /*
 5. IMPLEMENTACAO DA GRAMATICA - COMANDOS
-[X] comando -> atribuicao | leitura | escrita | condicional
-             | repeticao_para | repeticao_enquanto | chamada | retorno
-[X] atribuicao -> variavel '<-' expressao
-[X] variavel -> id ('[' expressao ']')?
-[X] leitura -> leia '(' variavel ')'
-[X] escrita -> (escreva | escreval) '(' expressao (',' expressao)* ')'
-[X] condicional -> se '(' expressao ')' entao comando* (senao comando*)? fimse
-[X] repeticao_para -> para id de expressao ate expressao (passo expressao)? faca comando* fimpara
-[X] repeticao_enquanto -> enquanto '(' expressao ')' faca comando* fimenquanto
-[X] chamada -> id ('(' (expressao (',' expressao)*)? ')')?
-[X] retorno -> retorne expressao
-[X] Decidir como diferenciar atribuicao de chamada quando os dois comecam com id (olhar o que vem depois do id: '<-', '[', '(' ou nenhum desses).
+codigo: (leitura | escrita | condicional | senao | repeticao_para | repeticao_enquanto | retorno | atribuicao)*
+var: 'var' id_lista
+id_lista: id (virgula id)*
+Leitura: leia abreParenteses id fechaParenteses
+Escrita: (escreva | escreval) abreParenteses aspas (cadeia+ | virgula*)+ aspas fechaParenteses
+Condicional: se abreParenteses (id | inteiro| real) (operadorRelacional | 'MOD') (id | inteiro| real) fechaParenteses entao codigo senao
+ 
+senao: codigo| fimse
+
+Repetição_para: para id de inteiro ate inteiro passo
+
+passo: 'passo' inteiro faca | faca
+
+faca: codigo fim
+
+fim: fimpara | fimenquanto
+
+Repeticao_enquanto: enquanto abreParenteses id operadorRelacional inteiro fecha parenteses codigo fim
+Retorne: logico | id operacaoAritmetica id 
 */
 // Protótipos das funções de comandos e expressões
 
@@ -603,10 +606,6 @@ void repeticaoPara() {//
 void repeticaoEnquanto() {//
 }
 
-// [X] chamada -> id ('(' (expressao (',' expressao)*)? ')')?
-void chamada() {//
-}
-
 // [X] retorno -> retorne expressao
 void retorno() {//
 }
@@ -614,20 +613,15 @@ void retorno() {//
 /*
 [X] Decisão para diferenciar atribuição de chamada quando ambos começam com ID:
 */
-void comando() {//
+void codigo() {//
 }
 
 /*
 4. IMPLEMENTACAO DA GRAMATICA - DECLARACOES
-[X] declaracao_var -> var declaracao_lista+
-[X] declaracao_lista -> id_lista ':' tipo
-[X] id_lista -> id (',' id)*
-[X] tipo -> tipo_base | vetor '[' num_int '..' num_int ']' de tipo_base
-[X] tipo_base -> inteiro | real | caractere | logico
-[X] declaracao_procedimento -> procedimento id ('(' parametros ')')? inicio comando* fimprocedimento
-[X] declaracao_funcao -> funcao id '(' parametros? ')' ':' tipo_base inicio comando* fimfuncao
-[X] parametros -> parametro (',' parametro)*
-[X] parametro -> id ':' tipo_base
+tipo: inteiro | real | logico
+Procedimentos: procedimento id abreParenteses  (id doisPontos tipo | virgula)+ fechaParenteses codigo fimprocedimento
+Funções: funcao id abreParenteses (id doisPontos tipo | virgula)+ fechaParenteses doisPontos tipo inicio codigo fimfuncao
+
 */
 // tipo_base -> inteiro | real | caractere | logico
 void tipoBase() { //
@@ -665,8 +659,8 @@ void declaracaoFuncao() { // 'fimfuncao'
 }
 /*
 3. IMPLEMENTACAO DA GRAMATICA - ESTRUTURA GERAL
-[X] algoritmo -> algoritmo cadeia declaracao* inicio comando* fimalgoritmo
-[ ] declaracao -> declaracao_var | declaracao_procedimento | declaracao_funcao
+algoritmoAux: algoritmo aspas cadeia aspas var inicio fimalgoritmo
+
 */
 // algoritmo -> algoritmo cadeia declaracao* inicio comando* fimalgoritmo
 void algoritmo() {
