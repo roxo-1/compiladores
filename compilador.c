@@ -542,23 +542,73 @@ Operação Relacional: < | <= | == | > | >= | <>
 Atribuição:  id '<-' (inteiro | float | caractere | logico)
 Operações Lógicas: E | OU
 */
-void fator() {//
-}
 
-// termo -> fator (('*' | '/' | '\' | MOD) fator)*
-void termo() {//
+//Operação Aritmética: + | - | * | /
+void operacaoAritmetica(){
+    if (tokenAtual.type == TOKEN_OP_ARIT) {
+        nextToken();
+    } else {
+        erroSintatico("Operador aritmetico (+, -, *, /) esperado.");
+    }
 }
-
-// expressao_arit -> termo (('+' | '-') termo)*
-void expressaoAritmetica() {//
+//Operação Relacional: < | <= | == | > | >= | <>
+void operacaoRelacional(){
+    if (tokenAtual.type == TOKEN_OP_REL) {
+        nextToken();
+    } else {
+        erroSintatico("Operador relacional esperado.");
+    }
 }
+//Atribuição:  id '<-' (inteiro | float | caractere | logico)
+void operacaoAtribuicao(){
+    // Reconhece o identificador 'id'
+    casaToken(TOKEN_ID);
 
-// expressao_rel -> expressao_arit (opReal expressao_arit)?
-void expressaoRelacional() {//
+    // Reconhece o operador de atribuição '<-'
+    if (tokenAtual.type == TOKEN_OP_ATRIBUTION) {
+        nextToken();
+    } else {
+        erroSintatico("Operador de atribuicao '<-' esperado.");
+    }
+
+    // Aceita um valor literal: inteiro, float, caractere (ID) ou booleano
+    if (tokenAtual.type == TOKEN_NUM_INT) {
+        casaToken(TOKEN_NUM_INT);
+    } else if (tokenAtual.type == TOKEN_NUM_FLOAT) {
+        casaToken(TOKEN_NUM_FLOAT);
+    } else if (tokenAtual.type == TOKEN_BOOLEANO) {
+        casaToken(TOKEN_BOOLEANO);
+    } else if (tokenAtual.type == TOKEN_ID) { // Para representar 'caractere' ou ID
+        casaToken(TOKEN_ID);
+    } else {
+        erroSintatico("Valor invalido para atribuicao.");
+    }
 }
-
-// expressao -> expressao_e (OU expressao_e)*
-void expressao() {//
+//Operações Lógicas: E | OU
+void operacaoLogico(){
+    if (tokenAtual.type == TOKEN_OP_LOG) {
+        nextToken();
+    } else {
+        erroSintatico("Operador logico esperado.");
+    }
+}
+//Operacoes: operacaoAritmetica | operacaoRelacional | operacaoLogica
+void operacoes(){
+   if (tokenAtual.type == TOKEN_OP_ARIT) {
+        operacaoAritmetica();
+    } else if (tokenAtual.type == TOKEN_OP_REL) {
+        operacaoRelacional();
+    } else if (tokenAtual.type == TOKEN_OP_LOG) {
+        operacaoLogico();
+    } else {
+        erroSintatico("Operacao invalida. Esperado operador aritmetico, relacional ou logico.");
+    }
+}
+//Expressao: id operacoes id
+void expressao(){
+    casaToken(TOKEN_ID);
+    operacoes();
+    casaToken(TOKEN_ID);
 }
 
 /*
