@@ -5,8 +5,8 @@
 
 #define MAX_LEXEMA 128
 char lexemaAtual[MAX_LEXEMA];
-#define OP_ASSIGN 5
-#define OP_NE     6
+// #define OP_ASSIGN 5
+// #define OP_NE     6
 FILE *arquivoSaida = NULL;
 
 // esses dois enum tiveram que vir para cima do struct Token, porque o C
@@ -31,6 +31,7 @@ typedef enum {
     OP_EQ, // ==
     OP_GT, // >
     OP_GE, // >= 
+    OP_DIF, // <>
 } OpRelType;
 
 typedef enum {
