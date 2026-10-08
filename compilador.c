@@ -48,6 +48,7 @@ typedef enum {
     OP_MINUS, // -
     OP_DIV, // /
     OP_MULT, // * 
+    OP_DIV_INT, // divisao inteira (barra invertida), usada no teste CalculadoraBasica
 } OpAritType;
 
 
@@ -73,6 +74,8 @@ typedef enum {
     aspas,
     virgula,
     doisPontos,
+    pontoVirgula, // ;   (lista de Delimitador do relatorio)
+    pontoPonto,   // ..  (limites do vetor)
 } Delimitadores;
 
 typedef struct {
@@ -123,6 +126,15 @@ void declaracaoFuncao();
 void algoritmo(); 
 void declaracao();
 void codigo();
+// prototipos das funcoes novas
+void operando();
+int ehDelimitador(Delimitadores d);
+void operandoSimples();
+void condicaoSe();
+void condicaoEnquanto();
+void chamadaResto();
+void declaracoesRotinas();
+void imprimirTabelaSimbolos(FILE *saida);
 
 
 /*
@@ -135,10 +147,12 @@ void codigo();
 */
 FILE *fonte = NULL; // Ponteiro para o arquivo de entrada
 int linhaAtual = 1; // Contador de linha atual
+int pontoPendente = 0; // 1 se um '.' ja foi lido do arquivo mas ainda nao virou token
 
 void iniciarAnalisador(FILE *arquivo) {
     fonte = arquivo;
     linhaAtual = 1;
+    pontoPendente = 0;
 }
 
 int fimDoArquivo(){
@@ -177,12 +191,21 @@ int peek() { // A função peek espia o próximo caractere sem consumi-lo do buf
     return c;
 }
 
+// le o proximo caractere do arquivo. Se sobrou um '.' lido antes, devolve ele primeiro.
+int lerCaractere() {
+    if (pontoPendente) {
+        pontoPendente = 0;
+        return '.';
+    }
+    return fgetc(fonte);
+}
+
 //Limpeza de Entrada
 Token proximoToken() {
     Token token;
     int c;
 
-    while ((c = fgetc(fonte)) != EOF) {
+    while ((c = lerCaractere()) != EOF) {
         if (c == '\n') {
             linhaAtual++;
             continue;
@@ -212,7 +235,8 @@ Token proximoToken() {
     token.line = linhaAtual;
 
     // Leitura de Palavras Reservadas e Identificadores
-    if (isalpha(c) || c == '_') {
+    // id comeca com letra: [a-zA-Z][a-zA-Z0-9_]*
+    if (isalpha(c)) {
         char lexema[MAX_LEXEMA];
         int i = 0;
         lexema[i++] = (char)c;
@@ -229,6 +253,12 @@ Token proximoToken() {
         if (token.type == TOKEN_ID) {
             token.attribute.table_index = inserirTabelaSimbolos(lexema);
         }
+        // guarda qual operador logico / qual booleano foi lido
+        else if (token.type == TOKEN_OP_LOG) {
+            token.attribute.op_log = (strcmp(lexema, "E") == 0) ? OP_E : OP_OU;
+        } else if (token.type == TOKEN_BOOLEANO) {
+            token.attribute.booleano = (strcmp(lexema, "verdadeiro") == 0) ? TRUE : FALSO;
+        }
         return token;
     }
 
@@ -243,12 +273,19 @@ Token proximoToken() {
             lexema[i++] = (char)fgetc(fonte);
         }
 
+        // numero real: [0-9]+\.[0-9]+  (precisa de digito depois do ponto)
         if (peek() == '.') {
-            ehReal = 1;
-            lexema[i++] = (char)fgetc(fonte);
-
-            while (i < MAX_LEXEMA - 1 && isdigit(peek())) {
-                lexema[i++] = (char)fgetc(fonte);
+            fgetc(fonte); // le o '.'
+            if (isdigit(peek())) {
+                ehReal = 1;
+                lexema[i++] = '.';
+                while (i < MAX_LEXEMA - 1 && isdigit(peek())) {
+                    lexema[i++] = (char)fgetc(fonte);
+                }
+            } else {
+                // nao e real (ex: 1..3 no vetor). O '.' ja foi lido, entao
+                // guardo ele para ser o inicio do proximo token.
+                pontoPendente = 1;
             }
         }
         lexema[i] = '\0';
@@ -288,8 +325,9 @@ Token proximoToken() {
     if (c == '<') {
         if (peek() == '-') {
             fgetc(fonte);
-            token.type = TOKEN_OP_REL;
-            token.attribute.op_at = TOKEN_OP_ATRIBUTION;
+            // <- e o operador de atribuicao
+            token.type = TOKEN_OP_ATRIBUTION;
+            token.attribute.op_at = OP_AT;
             return token;
         }
         if (peek() == '=') {
@@ -322,47 +360,69 @@ Token proximoToken() {
         return token;
     }
 
-    // Operador =
+    // Operador == (relatorio). O '=' simples tambem e aceito como igualdade.
     if (c == '=') {
+        if (peek() == '=') {
+            fgetc(fonte);
+        }
         token.type = TOKEN_OP_REL;
         token.attribute.op_rel = OP_EQ;
         return token;
     }
 
     
-    // Operadores e Delimitadores em geral
-    if (c == '(' || c == ')' || c == ',' || c == ':' || 
-        c == '[' || c == ']')  {
+    // delimitador '..' (limites do vetor: vetor[1..3])
+    if (c == '.' && peek() == '.') {
+        fgetc(fonte);
         token.type = TOKEN_DELIMITADORES;
-        token.attribute.delimitadores = c; // Guarda o próprio caractere como código!
-        return token;
-    }
-    else if( c == '+'){
-        token.type = OP_SUM;
-        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
-        return token;
-    }
-    else if(c == '-'){
-        token.type = OP_MINUS;
-        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
-        return token;
-    }
-    else if( c == '*'){
-        token.type = OP_MULT;
-        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
-        return token;
-    }
-    else if(c == '/'){
-        token.type = OP_DIV;
-        token.attribute.op_arit = c; // Guarda o próprio caractere como código!
-        return token;
-    }
-    else{   // comentário
-        token.type = TOKEN_COMENTARIO;
-        token.attribute.comentario = c; // Guarda o próprio caractere como código!
+        token.attribute.delimitadores = pontoPonto;
         return token;
     }
 
+    // Operadores e Delimitadores em geral
+    // o atributo guarda qual delimitador foi lido (enum Delimitadores)
+    if (c == '(' || c == ')' || c == ',' || c == ':' || 
+        c == '[' || c == ']' || c == ';')  {
+        token.type = TOKEN_DELIMITADORES;
+        switch (c) {
+            case '(': token.attribute.delimitadores = abreParenteses;  break;
+            case ')': token.attribute.delimitadores = fechaParenteses; break;
+            case '[': token.attribute.delimitadores = abreColchetes;   break;
+            case ']': token.attribute.delimitadores = fechaColchetes;  break;
+            case ',': token.attribute.delimitadores = virgula;         break;
+            case ':': token.attribute.delimitadores = doisPontos;      break;
+            case ';': token.attribute.delimitadores = pontoVirgula;    break;
+        }
+        return token;
+    }
+    // operadores aritmeticos: o tipo e TOKEN_OP_ARIT e o operador fica no atributo
+    else if( c == '+'){
+        token.type = TOKEN_OP_ARIT;
+        token.attribute.op_arit = OP_SUM;
+        return token;
+    }
+    else if(c == '-'){
+        token.type = TOKEN_OP_ARIT;
+        token.attribute.op_arit = OP_MINUS;
+        return token;
+    }
+    else if( c == '*'){
+        token.type = TOKEN_OP_ARIT;
+        token.attribute.op_arit = OP_MULT;
+        return token;
+    }
+    else if(c == '/'){
+        token.type = TOKEN_OP_ARIT;
+        token.attribute.op_arit = OP_DIV;
+        return token;
+    }
+    else if(c == '\\'){   // divisao inteira (aparece no teste CalculadoraBasica)
+        token.type = TOKEN_OP_ARIT;
+        token.attribute.op_arit = OP_DIV_INT;
+        return token;
+    }
+
+    // qualquer outro caractere e erro lexico
     char seqInvalida[2] = { (char)c, '\0' };
     erroLexico(seqInvalida);
     return token;
@@ -374,11 +434,14 @@ Token proximoToken() {
  * [X] Preencher e retornar a struct Token com o tipo, linha e atributo correspondente.
  */
 TokenNome classificarPalavra(const char *lexema) {
+    // E, OU, verdadeiro e falso tem tipo proprio de token
+    if (strcmp(lexema, "E") == 0 || strcmp(lexema, "OU") == 0) return TOKEN_OP_LOG;
+    if (strcmp(lexema, "verdadeiro") == 0 || strcmp(lexema, "falso") == 0) return TOKEN_BOOLEANO;
+
     // lista com todas as palavras reservadas do relatório da etapa 1
     static const char *reservadas[] = {
         "algoritmo", "var", "inicio", "fimalgoritmo",
         "caractere", "inteiro", "real", "logico",
-        "verdadeiro", "falso",
         "leia", "escreva", "escreval",
         "se", "entao", "senao", "fimse",
         "para", "de", "ate", "passo", "faca", "fimpara",
@@ -386,7 +449,7 @@ TokenNome classificarPalavra(const char *lexema) {
         "vetor",
         "procedimento", "fimprocedimento",
         "funcao", "fimfuncao", "retorne",
-        "MOD", "E", "OU"
+        "MOD"
     };
     int total = (int)(sizeof(reservadas) / sizeof(reservadas[0]));
 
@@ -401,13 +464,41 @@ TokenNome classificarPalavra(const char *lexema) {
     return TOKEN_ID;
 }
 
-// isso aqui ainda não é a tabela de símbolos de verdade que o projeto vai
-// precisar depois -- é só um contador provisório pra função de cima ter
-// algum número pra colocar no table_index sem dar erro
+// Tabela de simbolos: guarda cada identificador uma unica vez.
+// Se o lexema ja esta na tabela, devolve o indice que ele ja tinha.
+#define MAX_SIMBOLOS 1000
+char tabelaSimbolos[MAX_SIMBOLOS][MAX_LEXEMA]; // texto de cada simbolo
+int linhaSimbolos[MAX_SIMBOLOS];               // linha da primeira ocorrencia
+int totalSimbolos = 0;
+
 int inserirTabelaSimbolos(const char *lexema) {
-    static int proximoIndice = 0;
-    (void)lexema; // por enquanto não uso o lexema pra nada, só pra não sobrar warning de parametro nao usado
-    return proximoIndice++;
+    for (int i = 0; i < totalSimbolos; i++) {
+        if (strcmp(tabelaSimbolos[i], lexema) == 0) {
+            return i; // ja existe
+        }
+    }
+
+    if (totalSimbolos == MAX_SIMBOLOS) {
+        fprintf(stderr, "Erro: tabela de simbolos cheia\n");
+        exit(1);
+    }
+
+    strcpy(tabelaSimbolos[totalSimbolos], lexema);
+    linhaSimbolos[totalSimbolos] = linhaAtual;
+    totalSimbolos++;
+    return totalSimbolos - 1;
+}
+
+void imprimirTabelaSimbolos(FILE *saida) {
+    printf("\n=== TABELA DE SIMBOLOS ===\n");
+    if (saida != NULL) fprintf(saida, "\n=== TABELA DE SIMBOLOS ===\n");
+
+    for (int i = 0; i < totalSimbolos; i++) {
+        printf("%d | %s | linha %d\n", i, tabelaSimbolos[i], linhaSimbolos[i]);
+        if (saida != NULL) {
+            fprintf(saida, "%d | %s | linha %d\n", i, tabelaSimbolos[i], linhaSimbolos[i]);
+        }
+    }
 }
 
 
@@ -461,6 +552,33 @@ Token tokenAtual;
 Token obterToken(void) {
     return proximoToken();
 }
+// codigo impresso para operadores aritmeticos e delimitadores (o mesmo que o relatorio mostra: codigo ASCII)
+int codigoOperadorDelimitador(Token t) {
+    if (t.type == TOKEN_OP_ARIT) {
+        switch (t.attribute.op_arit) {
+            case OP_SUM:     return '+';
+            case OP_MINUS:   return '-';
+            case OP_DIV:     return '/';
+            case OP_MULT:    return '*';
+            case OP_DIV_INT: return '\\';
+        }
+    } else {
+        switch (t.attribute.delimitadores) {
+            case abreParenteses:  return '(';
+            case fechaParenteses: return ')';
+            case abreColchetes:   return '[';
+            case fechaColchetes:  return ']';
+            case aspas:           return '"';
+            case virgula:         return ',';
+            case doisPontos:      return ':';
+            case pontoVirgula:    return ';';
+            case pontoPonto:      return '.';
+        }
+    }
+    return 0;
+}
+
+// imprime o token no formato dos testes do relatorio (linha# NOME | atributo)
 void imprimirToken(Token t, FILE *saida) {
     if (t.type == TOKEN_EOF) return;
 
@@ -480,7 +598,18 @@ void imprimirToken(Token t, FILE *saida) {
             sprintf(buffer, "%d# NUM_REAL | %.2f", t.line, t.attribute.float_value);
             break;
         case TOKEN_OP_REL:
-            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | %d", t.line, t.attribute.delimitadores);
+            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | %d", t.line, t.attribute.op_rel);
+            break;
+        case TOKEN_OP_ATRIBUTION:
+            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | 5", t.line);
+            break;
+        case TOKEN_OP_ARIT:
+        case TOKEN_DELIMITADORES:
+            sprintf(buffer, "%d# OPERADOR_DELIMITADOR | %d", t.line, codigoOperadorDelimitador(t));
+            break;
+        case TOKEN_OP_LOG:      // E, OU e verdadeiro/falso sao palavras reservadas (secao 1.1)
+        case TOKEN_BOOLEANO:
+            sprintf(buffer, "%d# PALAVRA_RESERVADA | 0", t.line);
             break;
         default:
             sprintf(buffer, "%d# DESCONHECIDO | 0", t.line);
@@ -527,6 +656,18 @@ int checarPalavraReservada(){
     }
     erroSintatico("Não palavra reservada");
     return 0; // CASO CONTRARIO, RETONA
+}
+
+// exige uma palavra reservada especifica (ex: "algoritmo", "inicio")
+// e avanca. Se nao for ela, da erro sintatico.
+void consumirKeyword(const char *palavra) {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, palavra) == 0) {
+        nextToken();
+    } else {
+        char msg[100];
+        sprintf(msg, "Esperado '%s'.", palavra);
+        erroSintatico(msg);
+    }
 }
 
 //VERIFICA SE O TOKEN ATUAL É UM DELIMITADOR OU OPERADOR ESPECIFICO
@@ -598,6 +739,7 @@ void operacaoLogico(){
     }
 }
 //Operacoes: operacaoAritmetica | operacaoRelacional | operacaoLogica
+// tambem aceita MOD (a regra do se usa 'MOD')
 void operacoes(){
    if (tokenAtual.type == TOKEN_OP_ARIT) {
         operacaoAritmetica();
@@ -605,15 +747,107 @@ void operacoes(){
         operacaoRelacional();
     } else if (tokenAtual.type == TOKEN_OP_LOG) {
         operacaoLogico();
+    } else if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "MOD") == 0) {
+        nextToken();
     } else {
         erroSintatico("Operacao invalida. Esperado operador aritmetico, relacional ou logico.");
     }
 }
-//Expressao: id operacoes id
+
+// o token atual e um operador (inclui MOD)?
+int ehOperador() {
+    return tokenAtual.type == TOKEN_OP_ARIT ||
+           tokenAtual.type == TOKEN_OP_REL  ||
+           tokenAtual.type == TOKEN_OP_LOG  ||
+           (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "MOD") == 0);
+}
+
+// chamada: '(' (expressao (',' expressao)*)? ')'   (o id ja foi consumido)
+void chamadaResto() {
+    if (ehDelimitador(abreParenteses)) {
+        nextToken();
+    } else {
+        erroSintatico("Esperado '(' na chamada.");
+    }
+    if (!ehDelimitador(fechaParenteses)) {
+        expressao();
+        while (ehDelimitador(virgula)) {
+            nextToken();
+            expressao();
+        }
+    }
+    if (ehDelimitador(fechaParenteses)) {
+        nextToken();
+    } else {
+        erroSintatico("Esperado ')' ao fechar chamada.");
+    }
+}
+
+// operando: id | inteiro | real | booleano | '-' operando | '(' expressao ')'
+// (antes so aceitava id, o que rejeitava "se (x > 0)", "para i de 1 ate 10", "x <- 5")
+void operando() {
+    if (tokenAtual.type == TOKEN_OP_ARIT && tokenAtual.attribute.op_arit == OP_MINUS) {
+        nextToken();
+        operando();
+    } else if (ehDelimitador(abreParenteses)) {
+        nextToken();
+        expressao();
+        if (ehDelimitador(fechaParenteses)) {
+            nextToken();
+        } else {
+            erroSintatico("Esperado ')' ao fechar expressao.");
+        }
+    } else if (tokenAtual.type == TOKEN_ID) {
+        variavel();
+        if (ehDelimitador(abreParenteses)) {   // id(args): chamada de funcao
+            chamadaResto();
+        }
+    } else if (tokenAtual.type == TOKEN_NUM_INT ||
+               tokenAtual.type == TOKEN_NUM_FLOAT ||
+               tokenAtual.type == TOKEN_BOOLEANO) {
+        nextToken();
+    } else {
+        erroSintatico("Operando esperado (id, numero ou booleano).");
+    }
+}
+
+//Expressao: operando (operacoes operando)*
+// versao mais geral que "id operacoes id" do relatorio: aceita um operando sozinho
+// (escreva(x), x <- 5) e tambem varias operacoes seguidas (a + b * c)
 void expressao(){
+    operando();
+    while (ehOperador()) {
+        operacoes();
+        operando();
+    }
+}
+
+// Operando de condicao do relatorio: (id | inteiro | real)
+void operandoSimples() {
+    if (tokenAtual.type == TOKEN_ID || tokenAtual.type == TOKEN_NUM_INT || tokenAtual.type == TOKEN_NUM_FLOAT) {
+        nextToken();
+    } else {
+        erroSintatico("Esperado identificador, inteiro ou real.");
+    }
+}
+
+// Condicional: se ( (id|inteiro|real) (operadorRelacional | 'MOD') (id|inteiro|real) ) ...
+void condicaoSe() {
+    operandoSimples();
+    if (tokenAtual.type == TOKEN_OP_REL ||
+        (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "MOD") == 0)) {
+        nextToken();
+    } else {
+        erroSintatico("Esperado operador relacional ou 'MOD'.");
+    }
+    operandoSimples();
+}
+
+// Repeticao_enquanto: enquanto ( id operadorRelacional inteiro ) ...
+void condicaoEnquanto() {
     casaToken(TOKEN_ID);
-    operacoes();
-    casaToken(TOKEN_ID);
+    operacaoRelacional();
+    casaToken(TOKEN_NUM_INT);
 }
 
 /*
@@ -641,8 +875,9 @@ void variavel() {
 
 // [X] atribuicao -> variavel '<-' expressao
 void atribuicao() {
-    variavel();
-    if (tokenAtual.type == TOKEN_OP_REL || tokenAtual.type == TOKEN_OP_ATRIBUTION) {
+    // a variavel ja foi consumida por comando() (atribuicao e chamada comecam com id)
+    // so aceita o token de atribuicao <-
+    if (tokenAtual.type == TOKEN_OP_ATRIBUTION) {
         nextToken(); // consome '<-'
     } else {
         erroSintatico("Operador de atribuicao '<-' esperado.");
@@ -664,7 +899,7 @@ void leitura() {
         erroSintatico("Esperado '(' apos 'leia'.");
     }
 
-    variavel();
+    casaToken(TOKEN_ID); // Leitura: leia ( id )
 
     if (ehDelimitador(fechaParenteses)) {
         nextToken(); // consome ')'
@@ -716,7 +951,7 @@ void condicional() {
         erroSintatico("Esperado '(' apos 'se'.");
     }
 
-    expressao();
+    condicaoSe(); // (id|inteiro|real) (opRel|MOD) (id|inteiro|real)
 
     if (ehDelimitador(fechaParenteses)) {
         nextToken(); // consome ')'
@@ -760,7 +995,7 @@ void repeticaoPara() {
         erroSintatico("Esperado 'de' no laco 'para'.");
     }
 
-    expressao();
+    casaToken(TOKEN_NUM_INT); // para id de inteiro ate inteiro
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "ate") == 0) {
         nextToken(); // consome 'ate'
@@ -768,11 +1003,11 @@ void repeticaoPara() {
         erroSintatico("Esperado 'ate' no laco 'para'.");
     }
 
-    expressao();
+    casaToken(TOKEN_NUM_INT);
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "passo") == 0) {
         nextToken(); // consome 'passo'
-        expressao();
+        casaToken(TOKEN_NUM_INT); // passo: 'passo' inteiro
     }
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "faca") == 0) {
@@ -804,7 +1039,7 @@ void repeticaoEnquanto() {
         erroSintatico("Esperado '(' apos 'enquanto'.");
     }
 
-    expressao();
+    condicaoEnquanto(); // id operadorRelacional inteiro
 
     if (ehDelimitador(fechaParenteses)) {
         nextToken(); // consome ')'
@@ -812,10 +1047,9 @@ void repeticaoEnquanto() {
         erroSintatico("Esperado ')' apos expressao do 'enquanto'.");
     }
 
+    // a regra do enquanto nao tem 'faca'; aceita-se opcionalmente (VisuAlg)
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "faca") == 0) {
         nextToken(); // consome 'faca'
-    } else {
-        erroSintatico("Esperado 'faca'.");
     }
 
     codigo();
@@ -835,7 +1069,14 @@ void retorno() {
         erroSintatico("Esperado 'retorne'.");
     }
 
-    expressao();
+    // Retorne: logico | id operacaoAritmetica id
+    if (tokenAtual.type == TOKEN_BOOLEANO) {
+        nextToken();
+    } else {
+        casaToken(TOKEN_ID);
+        operacaoAritmetica();
+        casaToken(TOKEN_ID);
+    }
 }
 
 // [X] comando -> leitura | escrita | condicional | repeticaoPara | repeticaoEnquanto | retorno | atribuicao
@@ -857,7 +1098,14 @@ void comando() {
             erroSintatico("Comando nao reconhecido.");
         }
     } else if (tokenAtual.type == TOKEN_ID) {
-        atribuicao();
+        // atribuicao e chamada comecam com id. Consome a variavel e decide pelo proximo token.
+        variavel();
+        if (tokenAtual.type == TOKEN_OP_ATRIBUTION) {
+            atribuicao();
+        } else if (ehDelimitador(abreParenteses)) {
+            chamadaResto();
+        }
+        // senao: chamada de procedimento sem parenteses (ex: linha_decorativa)
     } else {
         erroSintatico("Inicio de comando invalido.");
     }
@@ -895,13 +1143,44 @@ Funções: funcao id abreParenteses (id doisPontos tipo | virgula)+ fechaParente
 */
 void consumir(TokenNome tipoEsperado) {
     if (tokenAtual.type == tipoEsperado) {
-        tokenAtual = proximoToken();
+        // nextToken() em vez de proximoToken(), para o token tambem ser impresso no .lex
+        nextToken();
     } else {
         erroSintatico("Token inesperado.");
     }
 }
-//tipo: inteiro | real | logico | caractere
+// limite do vetor: caractere (uma letra) | inteiro | real. Devolve qual dos tres foi lido.
+TokenNome limiteVetor() {
+    TokenNome tipoLimite = tokenAtual.type;
+    if (tipoLimite == TOKEN_NUM_INT || tipoLimite == TOKEN_NUM_FLOAT) {
+        nextToken();
+    } else if (tipoLimite == TOKEN_ID && strlen(lexemaAtual) == 1) {
+        nextToken(); // caractere: [a-zA-Z]
+    } else {
+        erroSintatico("Limite de vetor invalido (esperado caractere, inteiro ou real).");
+    }
+    return tipoLimite;
+}
+
+// tipo: tipoBase | vetor '[' limite '..' limite ']' de tipoBase   (limites do mesmo tipo)
 void tipo() {
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "vetor") == 0) {
+        nextToken(); // consome 'vetor'
+        if (ehDelimitador(abreColchetes)) nextToken(); else erroSintatico("Esperado '[' apos 'vetor'.");
+        TokenNome t1 = limiteVetor();
+        if (ehDelimitador(pontoPonto)) nextToken(); else erroSintatico("Esperado '..' nos limites do vetor.");
+        TokenNome t2 = limiteVetor();
+        if (t1 != t2) erroSintatico("Os dois limites do vetor devem ser do mesmo tipo.");
+        if (ehDelimitador(fechaColchetes)) nextToken(); else erroSintatico("Esperado ']' apos limites do vetor.");
+        consumirKeyword("de");
+        tipoBase();
+    } else {
+        tipoBase();
+    }
+}
+
+//tipoBase: inteiro | real | logico | caractere
+void tipoBase() {
     if (tokenAtual.type == TOKEN_KEYWORD && 
        (strcmp(lexemaAtual, "inteiro") == 0 || 
         strcmp(lexemaAtual, "real") == 0 || 
@@ -915,53 +1194,56 @@ void tipo() {
 
 // Procedimentos: procedimento id abreParenteses  (id doisPontos tipo | virgula)+ fechaParenteses codigo fimprocedimento
 void procedimento() {
-    consumir(TOKEN_KEYWORD); // 'procedimento'
+    consumirKeyword("procedimento"); // confere a palavra exata
     consumir(TOKEN_ID);      // id do procedimento
 
-    // abreParenteses
+    // sem parametros nao ha parenteses (teste ProcedimentosSemParametros)
     if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == abreParenteses) {
         consumir(TOKEN_DELIMITADORES);
-    } else {
-        erroSintatico("Esperado '(' na declaracao do procedimento.");
-    }
 
-    // Lista de parâmetros: (id doisPontos tipo | virgula)+
-    do {
-        if (tokenAtual.type == TOKEN_ID) {
-            consumir(TOKEN_ID);
-            
-            // doisPontos
-            if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == doisPontos) {
+        // Lista de parâmetros: (id doisPontos tipo | virgula)+
+        do {
+            if (tokenAtual.type == TOKEN_ID) {
+                consumir(TOKEN_ID);
+
+                // doisPontos
+                if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == doisPontos) {
+                    consumir(TOKEN_DELIMITADORES);
+                    tipo();
+                } else {
+                    erroSintatico("Esperado ':' apos o identificador do parametro.");
+                }
+            } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
                 consumir(TOKEN_DELIMITADORES);
-                tipo();
             } else {
-                erroSintatico("Esperado ':' apos o identificador do parametro.");
+                erroSintatico("Parametro invalido na declaracao do procedimento.");
             }
-        } else if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
+        } while (tokenAtual.type == TOKEN_ID ||
+                (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
+
+        // fechaParenteses
+        if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
             consumir(TOKEN_DELIMITADORES);
         } else {
-            erroSintatico("Parametro invalido na declaracao do procedimento.");
+            erroSintatico("Esperado ')' na declaracao do procedimento.");
         }
-    } while (tokenAtual.type == TOKEN_ID || 
-            (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula));
+    }
 
-    // fechaParenteses
-    if (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == fechaParenteses) {
-        consumir(TOKEN_DELIMITADORES);
-    } else {
-        erroSintatico("Esperado ')' na declaracao do procedimento.");
+    // o teste do relatorio usa 'inicio' no procedimento (a regra nao tem), entao e opcional
+    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "inicio") == 0) {
+        nextToken();
     }
 
     // Corpo do procedimento
     codigo();
 
     // fimprocedimento
-    consumir(TOKEN_KEYWORD); // 'fimprocedimento'
+    consumirKeyword("fimprocedimento"); // confere a palavra exata
 }
 
 //Funções: funcao id abreParenteses (id doisPontos tipo | virgula)+ fechaParenteses doisPontos tipo inicio codigo fimfuncao
 void funcao() {
-    consumir(TOKEN_KEYWORD); // 'funcao'
+    consumirKeyword("funcao"); // confere a palavra exata
     consumir(TOKEN_ID);      // id da função
 
     // abreParenteses
@@ -1006,11 +1288,23 @@ void funcao() {
     }
 
     // Bloco de inicio e codigo
-    consumir(TOKEN_KEYWORD); // 'inicio'
+    consumirKeyword("inicio"); // confere a palavra exata
     codigo();
 
     // fimfuncao
-    consumir(TOKEN_KEYWORD); // 'fimfuncao'
+    consumirKeyword("fimfuncao"); // confere a palavra exata
+}
+// procedimentos e funcoes: o relatorio nao diz onde ficam; os testes mostram antes do 'var'.
+// Aceita antes e depois do bloco var.
+void declaracoesRotinas() {
+    while (tokenAtual.type == TOKEN_KEYWORD &&
+           (strcmp(lexemaAtual, "procedimento") == 0 || strcmp(lexemaAtual, "funcao") == 0)) {
+        if (strcmp(lexemaAtual, "procedimento") == 0) {
+            procedimento();
+        } else {
+            funcao();
+        }
+    }
 }
 /*
 3. IMPLEMENTACAO DA GRAMATICA - ESTRUTURA GERAL
@@ -1021,7 +1315,7 @@ algoritmoAux: 'algoritmo' aspas cadeia aspas var inicio fimalgoritmo
 // algoritmo: 'algoritmo' TOKEN_ID (que já é a string entre aspas) [var] inicio codigo fimalgoritmo
 void algoritmo() {
     // 1. Reconhece a palavra-chave 'algoritmo'
-    consumir(TOKEN_KEYWORD); 
+    consumirKeyword("algoritmo"); // confere a palavra exata
 
     // 2. Reconhece o nome do algoritmo
     // Como o Scanner lê "nome_do_algoritmo" entre aspas e já retorna TOKEN_ID,
@@ -1032,22 +1326,27 @@ void algoritmo() {
         erroSintatico("Esperado nome do algoritmo (cadeia de texto entre aspas).");
     }
 
-    // 3. Bloco var (opcional)
-    if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "var") == 0) {
-        nextToken(); // consome 'var'
-        
-        // Lê as declarações de variáveis até encontrar 'inicio'
-        while (tokenAtual.type == TOKEN_ID) {
-            idLista();
-            
-            if (tokenAtual.attribute.delimitadores == doisPontos) {
-                nextToken(); // consome ':'
-                tipo();
-            } else {
-                erroSintatico("Esperado ':' apos a lista de identificadores.");
-            }
+    declaracoesRotinas();
+
+    // 3. Bloco var (OBRIGATORIO no relatorio: var: 'var' id_lista)
+    consumirKeyword("var");
+    if (tokenAtual.type != TOKEN_ID) {
+        erroSintatico("Esperado identificador apos 'var'.");
+    }
+
+    // Lê as declarações de variáveis até encontrar 'inicio'
+    while (tokenAtual.type == TOKEN_ID) {
+        idLista();
+
+        if (ehDelimitador(doisPontos)) {
+            nextToken(); // consome ':'
+            tipo();
+        } else {
+            erroSintatico("Esperado ':' apos a lista de identificadores.");
         }
     }
+
+    declaracoesRotinas();
 
     // 4. Bloco inicio
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "inicio") == 0) {
@@ -1091,8 +1390,31 @@ void idLista() {
 [X] Exibir a mensagem exata "ERRO SINTATICO", informando o token incorreto e a linha do codigo fonte correspondente.
 [X] Abortar imediatamente a execucao do programa (exit) apos identificar o erro.
 */
+// mostra o token encontrado (o item 7 pede o token incorreto)
 void erroSintatico(const char *msg){
-    fprintf(stderr, "ERRO SINTATICO na linha %d: %s\n", tokenAtual.line, msg);
+    const char *nomeTipo;
+    switch (tokenAtual.type) {
+        case TOKEN_EOF:            nomeTipo = "fim de arquivo";        break;
+        case TOKEN_ID:             nomeTipo = "identificador";         break;
+        case TOKEN_NUM_INT:        nomeTipo = "numero inteiro";        break;
+        case TOKEN_NUM_FLOAT:      nomeTipo = "numero real";           break;
+        case TOKEN_OP_REL:         nomeTipo = "operador relacional";   break;
+        case TOKEN_OP_ARIT:        nomeTipo = "operador aritmetico";   break;
+        case TOKEN_OP_LOG:         nomeTipo = "operador logico";       break;
+        case TOKEN_OP_ATRIBUTION:  nomeTipo = "operador de atribuicao"; break;
+        case TOKEN_KEYWORD:        nomeTipo = "palavra reservada";     break;
+        case TOKEN_DELIMITADORES:  nomeTipo = "delimitador";           break;
+        case TOKEN_BOOLEANO:       nomeTipo = "booleano";              break;
+        default:                   nomeTipo = "desconhecido";          break;
+    }
+
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        fprintf(stderr, "ERRO SINTATICO na linha %d: %s (token encontrado: %s '%s')\n",
+                tokenAtual.line, msg, nomeTipo, lexemaAtual);
+    } else {
+        fprintf(stderr, "ERRO SINTATICO na linha %d: %s (token encontrado: %s)\n",
+                tokenAtual.line, msg, nomeTipo);
+    }
 
     fecharAnalisador();
     
@@ -1113,6 +1435,11 @@ void analisadorSintatico(FILE *arq) {
     nextToken(); // Carrega o primeiro token (lookahead)
     algoritmo();
 
+    // nada pode vir depois de 'fimalgoritmo'
+    if (tokenAtual.type != TOKEN_EOF) {
+        erroSintatico("Token inesperado apos 'fimalgoritmo'.");
+    }
+
     // while (tokenAtual.type != TOKEN_EOF) {
     //     printf("[Parser Lookahead] Linha %d | Type: %d\n", tokenAtual.line, tokenAtual.type);
     //     nextToken();
@@ -1120,6 +1447,9 @@ void analisadorSintatico(FILE *arq) {
 
     fecharAnalisador();
     printf("compilou\n");
+
+    // imprime a tabela de simbolos ao final
+    imprimirTabelaSimbolos(arquivoSaida);
 }
 
 // esse main() aqui é só pra eu conseguir testar se o lexico tá funcionando.
@@ -1134,14 +1464,20 @@ int main(int argc, char *argv[]) {
 
     FILE *arq = fopen(argv[1], "r");
     if (arq == NULL) {
-        fprintf(stderr, "Nao foi possivel abrir o arquivo: %s\n", argv[1]);
+        fprintf(stderr, "Nao foi possivel abrir o arquivo de entrada: %s\n", argv[1]);
         return 1;
     }
 
-    // Criar arquivo de saída com a extensão .lex
+    // Tenta criar o arquivo .lex, mas se o sistema negar o acesso, 
+    // ele NAO trava e continua imprimindo apenas no terminal (stdout)
     char nomeSaida[256];
     sprintf(nomeSaida, "%s.lex", argv[1]);
     arquivoSaida = fopen(nomeSaida, "w");
+
+    if (arquivoSaida == NULL) {
+        // Apenas avisa no terminal sem dar crash/Access Denied
+        fprintf(stderr, "[AVISO] Nao foi possivel criar '%s' (Acesso Negado no disco). Rodando apenas no terminal.\n\n", nomeSaida);
+    }
 
     analisadorSintatico(arq);
 
