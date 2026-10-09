@@ -384,6 +384,10 @@ gcc -Wall -Wno-unused-result -g -Og compilador.c -o compilador
 Os testes realizados foram os anexos fornecidos pela professora:
 * nome_do_algoritmo, que valida a estrutura do algoritmo, declaração de variável, comentários e espaços em branco ignorados, identificação de id's e manipulação da tabela de simbolos, reconhecimento de palavras reservadas.
 * CalculadoraBasica, que valida atribuição e operações aritméticas
+* ContagemSimples, que valida a estrutura de repetição 'para'
+* ContadorManual, que valida a estrutura de repetição 'enquanto'
+* ComparaTextosENumeros, que valida operadores relacionais
+* ParqueDeDiversoes, que valida operadores lógicos
 
 
 ---
