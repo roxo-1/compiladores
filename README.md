@@ -25,11 +25,140 @@ A gramática da linguagem foi desenvolvida na primeira etapa do projeto a partir
 Foram consideradas as principais construções da linguagem:
 
 * **1.1** Palavras reservadas
-* **1.2** Especificação de *tokens*
-* **1.3** Estrutura do programa
-* **1.4** Declaração
+algoritmo, var, inicio, fimalgoritmo,
+caractere, inteiro, real, logico,
+verdadeiro, falso,
+leia, escreva, escreval
+se, entao, senao, fimse
+para, de, ate, passo, faca, fimpara,
+enquanto, fimenquanto,
+vetor,
+procedimento, fimprocedimento,
+funcao, fimfuncao, retorne
+MOD, E, OU
+
+* **1.2** Estrutura geral do algoritmo
+algoritmo       ::= "algoritmo" nomeAlgoritmo declaracoesRotinas
+                    "var" declaracaoVariaveis declaracoesRotinas
+                    "inicio" codigo "fimalgoritmo"
+
+nomeAlgoritmo   ::= TOKEN_ID
+
+declaracoesRotinas ::= (procedimento | funcao)*
+
+declaracaoVariaveis ::= (idLista ":" tipo)+
+
+idLista         ::= id ("," id)*
+
+codigo          ::= comando*
+
+* **1.3** Tipos e declarações
+tipo ::= tipoBase
+       | "vetor" "[" limite ".." limite "]" "de" tipoBase
+
+tipoBase ::= "inteiro"
+           | "real"
+           | "caractere"
+           | "logico"
+
+limite ::= TOKEN_NUM_INT
+         | TOKEN_NUM_FLOAT
+         | id
+
+* **1.4** Expressões e operadores
+  expressao ::= operando (operacoes operando)*
+
+operando ::= "-" operando
+           | "(" expressao ")"
+           | id chamadaOpcional
+           | TOKEN_NUM_INT
+           | TOKEN_NUM_FLOAT
+           | TOKEN_BOOLEANO
+
+chamadaOpcional ::= chamadaResto
+                  | ε
+
+chamadaResto ::= "(" argumentosOpcional ")"
+
+argumentosOpcional ::= expressao ("," expressao)*
+                     | ε
+
+operacoes ::= operacaoAritmetica
+            | operacaoRelacional
+            | operacaoLogica
+            | "MOD"
+
+operacaoAritmetica ::= "+" | "-" | "*" | "/"
+
+operacaoRelacional ::= "<" | "<=" | "==" | ">" | ">=" | "<>"
+
+operacaoLogica ::= "E" | "OU"
+
 * **1.5** Comandos
-* **1.6** Expressões
+ comando ::= leitura
+          | escrita
+          | condicional
+          | repeticaoPara
+          | repeticaoEnquanto
+          | retorno
+          | atribuicao
+          | chamadaProcedimento
+
+variavel ::= id ("[" expressao "]")?
+
+atribuicao ::= variavel "<-" expressao
+
+leitura ::= "leia" "(" id ")"
+
+escrita ::= ("escreva" | "escreval")
+            "(" expressao ("," expressao)* ")"
+
+condicional ::= "se" "(" condicaoSe ")" "entao"
+                codigo
+                ("senao" codigo)?
+                "fimse"
+
+condicaoSe ::= operandoSimples
+               (operacaoRelacional | "MOD")
+               operandoSimples
+
+operandoSimples ::= id | TOKEN_NUM_INT | TOKEN_NUM_FLOAT
+
+* **1.6** Estruturas de repetição e retorno
+repeticaoPara ::= "para" id "de" TOKEN_NUM_INT
+                  "ate" TOKEN_NUM_INT
+                  ("passo" TOKEN_NUM_INT)?
+                  "faca" codigo "fimpara"
+
+repeticaoEnquanto ::= "enquanto" "(" condicaoEnquanto ")"
+                      ("faca")?
+                      codigo "fimenquanto"
+
+condicaoEnquanto ::= id operacaoRelacional TOKEN_NUM_INT
+
+retorno ::= "retorne" (TOKEN_BOOLEANO | id operacaoAritmetica id)
+
+* **1.7** Procedimentos e funções
+procedimento ::= "procedimento" id
+                 ("(" parametros ")")?
+                 ("inicio")?
+                 codigo
+                 "fimprocedimento"
+
+funcao ::= "funcao" id "(" parametros ")"
+           ":" tipo
+           "inicio" codigo
+           "fimfuncao"
+
+parametros ::= parametro ("," parametro)*
+
+parametro ::= id ":" tipo
+
+* **1.8** Chamadas e identificadores:
+chamadaProcedimento ::= id
+                      | id "(" argumentosOpcional ")"
+
+id ::= TOKEN_ID
 
 A implementação das Etapas 2 e 3 utiliza essa gramática como base para o reconhecimento dos programas MiniVisualg.
 
@@ -113,21 +242,18 @@ ERRO LEXICO na linha X: "sequência"
 ---
 
 ## Decisões de implementação
-
-Durante a implementação foi necessário lidar com algumas diferenças entre as categorias de elementos exigidas pela gramática e os tipos originalmente disponíveis na estrutura de `Token`.
-
-A decisão adotada foi **reaproveitar os campos existentes sempre que possível**, evitando alterações maiores na estrutura fornecida.
-
-| Elemento                               | Representação utilizada         | Justificativa                                                             |
-| -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
-| Cadeias de caracteres                  | `TOKEN_ID`                      | Reaproveita o mecanismo de armazenamento utilizado para identificadores   |
-| `<-`                                   | `TOKEN_OP_REL`  e  `OP_ASSIGN`  | Utiliza o campo `op_code` com um código específico para atribuição        |
-| `<>`                                   | `TOKEN_OP_REL`  e  `OP_NE`      | Reaproveita a estrutura dos operadores relacionais                        |
-| Operadores aritméticos e delimitadores | `TOKEN_OP_REL`                  | O próprio caractere é armazenado no campo `op_code`                       |
-| Palavras reservadas                    | `TOKEN_KEYWORD` + `lexemaAtual` | Permite que o sintático identifique qual palavra reservada foi encontrada |
-
-Essa abordagem não é necessariamente a modelagem mais convencional para um analisador léxico. A escolha foi feita principalmente para manter a estrutura principal fornecida na especificação e evitar alterações desnecessárias no `struct Token` e nos tipos já existentes.
-
+As  variáveis globais que foram adicionadas ao código e o que elas fazem:
+* lexemaAtual armazena a cadeia de caracteres até o último token, permitindo que o analisador sintático consulte o código original sem desvios.
+* arquivoSaida é apenas o ponteiro usado para gerar o arquivo de saída
+* tokenAtual é a variável que armazena o token retornado pela última chamda da função obterToken().
+* TOKEN_OP_ARIT para operações aritméticas,
+* TOKEN_OP_LOG para operações lógicas,
+* TOKEN_OP_ATRIBUTION para atribuição,
+* TOKEN_DELIMITADORES para delimitadores,
+* TOKEN_COMENTARIO para comentário,
+* TOKEN_BOOLEANO para booleano.
+* Os tokens extras foram adicionados para a aplicação correta da gramática
+  
 ### `lexemaAtual`
 
 Foi criada a variável `lexemaAtual` para armazenar o texto da última palavra reservada reconhecida.
@@ -242,26 +368,25 @@ deve ser validado nos testes do analisador léxico.
 Esses pontos devem ser considerados na avaliação dos testes da versão entregue.
 
 ---
+## Como executar o código
 
+* Como compilar:
+´´´
+gcc -Wall -Wno-unused-result -g -Og compilador.c -o compilador
+´´´
+
+* Como rodar, passando o arquivo fonte MiniVisualg como argumento:
+´´´´
+./compilador <nome_do_arquivo>.txt
+´´´
+---
 ## Testes
+Os testes realizados foram os anexos fornecidos pela professora:
+* nome_do_algoritmo, que valida a estrutura do algoritmo, declaração de variável, comentários e espaços em branco ignorados, identificação de id's e manipulação da tabela de simbolos, reconhecimento de palavras reservadas.
+* CalculadoraBasica, que valida atribuição e operações aritméticas
 
-Os testes devem considerar as principais construções apresentadas nos exemplos do enunciado, incluindo:
-
-* declaração de variáveis;
-* atribuição;
-* entrada e saída;
-* números inteiros e reais;
-* operadores aritméticos;
-* operadores relacionais;
-* operadores lógicos;
-* estruturas condicionais;
-* estruturas de repetição;
-* vetores;
-* procedimentos;
-* funções e retorno.
 
 ---
-
 ## Conclusão
 
 Nesta fase foram implementados os analisadores léxico e sintático da linguagem MiniVisualg, com funcionamento integrado entre as duas etapas.
