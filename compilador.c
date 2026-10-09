@@ -8,6 +8,7 @@ char lexemaAtual[MAX_LEXEMA];
 // #define OP_ASSIGN 5
 // #define OP_NE     6
 FILE *arquivoSaida = NULL;
+int contadorKeyword = 0;
 
 // esses dois enum tiveram que vir para cima do struct Token, porque o C
 // não deixa usar um tipo antes dele existir (dava erro de compilação
@@ -589,7 +590,7 @@ void imprimirToken(Token t, FILE *saida) {
             sprintf(buffer, "%d# IDENTIFICADOR | %d", t.line, t.attribute.table_index);
             break;
         case TOKEN_KEYWORD:
-            sprintf(buffer, "%d# PALAVRA_RESERVADA | 0", t.line);
+            sprintf(buffer, "%d# PALAVRA_RESERVADA | %d", t.line, contadorKeyword);
             break;
         case TOKEN_NUM_INT:
             sprintf(buffer, "%d# NUM_INTEIRO | %d", t.line, t.attribute.int_value);
@@ -609,7 +610,7 @@ void imprimirToken(Token t, FILE *saida) {
             break;
         case TOKEN_OP_LOG:      // E, OU e verdadeiro/falso sao palavras reservadas (secao 1.1)
         case TOKEN_BOOLEANO:
-            sprintf(buffer, "%d# PALAVRA_RESERVADA | 0", t.line);
+            sprintf(buffer, "%d# PALAVRA_RESERVADA | %d", t.line, contadorKeyword);
             break;
         default:
             sprintf(buffer, "%d# DESCONHECIDO | 0", t.line);
@@ -624,9 +625,13 @@ void imprimirToken(Token t, FILE *saida) {
         fprintf(saida, "%s\n", buffer);
     }
 }
+
 //PEGA O PROXIMO TOKEN
 void nextToken(void) {
     tokenAtual = obterToken();
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        contadorKeyword++;
+    }
     imprimirToken(tokenAtual, arquivoSaida);
 }
 

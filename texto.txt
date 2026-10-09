@@ -1,13 +1,11 @@
-algoritmo "nome_do_algoritmo"
-var
-    nome: caractere
-    idade: inteiro
-inicio
-    // Seção de comandos e lógica
-    escreva("Digite seu nome: ")
-    leia(nome)
-    escreva("Digite sua idade: ")
-    leia(idade)
-
-    escreva("Olá, ", nome, ". Você tem ", idade, " anos.")
+algoritmo "CalculadoraBasica"
+    var
+        n1, n2: inteiro
+    inicio
+        n1 <- 10
+        n2 <- 3
+        escreval("Soma: ", n1 + n2)
+        escreval("Multiplicação: ", n1 * n2)
+        escreval("Divisão real (/): ", n1 / n2)
+        escreval("Divisão inteira (\): ", n1 \ n2)
 fimalgoritmo
