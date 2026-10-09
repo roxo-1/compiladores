@@ -237,6 +237,8 @@ deve ser validado nos testes do analisador léxico.
 
 3. Existem situações específicas de tokens inesperados dentro de `comando()` que podem não gerar o erro sintático esperado.
 
+4. Contador de palavras reservadas não funciona como deveria, conta a quantidade de palavras reservadas no arquivo txt
+
 Esses pontos devem ser considerados na avaliação dos testes da versão entregue.
 
 ---
@@ -257,19 +259,6 @@ Os testes devem considerar as principais construções apresentadas nos exemplos
 * vetores;
 * procedimentos;
 * funções e retorno.
-
-Entre os exemplos fornecidos no enunciado estão `BoasVindas`, `CadastroSimples`, `TextoELogico`, `TesteDeLogica`, `CalculadoraBasica`, `ComparaTextosENumeros`, `ParqueDeDiversoes`, `VerificaChuva`, `ContagemSimples`, `ContagemRegressiva`, `ContadorManual`, `ListaNomes`, `MediaNotas`, exemplos de procedimentos e exemplos de funções.
-A tabela abaixo pode ser preenchida com o resultado dos testes efetivamente realizados:
-
-| Teste                       | Etapa            | Resultado   |
-| -------------------         | ---------------- | ----------- |
-| `RotinasComRetorno`         | Léxico/Sintático | Funciona    |
-| `nome_do_algoritmo`         | Léxico/Sintático | Funciona    |
-| `CalculadoraBasica`         | Léxico/Sintático | Funciona    |
-| `ProcedimentosSemParametros`| Léxico/Sintático | Funciona    |
-| `ListaNomes`                | Léxico/Sintático | Funciona    |
-| `ContagemSimples`           | Léxico/Sintático | Funciona    |
-| `ParqueDeDiversoes`         | Léxico/Sintático | Funciona    |
 
 ---
 
