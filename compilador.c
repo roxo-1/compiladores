@@ -10,6 +10,7 @@ char lexemaAtual[MAX_LEXEMA];
 // #define OP_NE     6
 FILE *arquivoSaida = NULL;
 int contadorKeyword = 0;
+    
 
 // esses dois enum tiveram que vir para cima do struct Token, porque o C
 // não deixa usar um tipo antes dele existir (dava erro de compilação
@@ -687,18 +688,13 @@ void imprimirToken(Token t, FILE *saida) {
 }
 
 //PEGA O PROXIMO TOKEN
+//PEGA O PROXIMO TOKEN
 void nextToken(void) {
     tokenAtual = obterToken();
-    //▪ Não é permitido utilizar palavras reservadas como nome de variável; 
-    //ainda tá errado
-    if(estaNaTabela(tokenAtual) == false){ 
-        erroSemantico("Variavel não foi declarada"); 
-    }else{
-        if (tokenAtual.type == TOKEN_KEYWORD) {
-            contadorKeyword++;
-        }
-        imprimirToken(tokenAtual, arquivoSaida);
+    if (tokenAtual.type == TOKEN_KEYWORD) {
+        contadorKeyword++;
     }
+    imprimirToken(tokenAtual, arquivoSaida);
 }
 
 /*
