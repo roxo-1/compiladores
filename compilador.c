@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h> 
 
 #define MAX_LEXEMA 128
 char lexemaAtual[MAX_LEXEMA];
@@ -144,7 +145,8 @@ void condicaoEnquanto();
 void chamadaResto();
 void declaracoesRotinas();
 void imprimirTabelaSimbolos(FILE *saida);
-
+bool estaNaTabela(const char *lexema);
+void erroSemantico(const char *sequencia);
 
 /*
  * TODO LIST - ETAPA 2: ANALISADOR LÉXICO (MINIVISUALG)
@@ -262,7 +264,7 @@ Token proximoToken() {
         // char type[7];
         // strcpy(type, token.type); 
         if (token.type == TOKEN_ID) {
-            token.attribute.table_index = inserirTabelaSimbolos(lexema);
+           token.attribute.table_index = inserirTabelaSimbolos(lexema);
         }
         // guarda qual operador logico / qual booleano foi lido
         else if (token.type == TOKEN_OP_LOG) {
@@ -497,6 +499,16 @@ const char* tokenParaString(TokenNome t) {
         default:               return "DESCONHECIDO";
     }
 }
+bool estaNaTabela(const char *lexema){
+    TNo *atual = tabelaSimbolos;
+    while(atual != NULL){
+        if(strcmp(atual->ID, lexema)==0){
+            return true; //tá na tabela
+        }
+        atual = atual->prox;
+    }
+    return false;
+}
 
 TNo* inserirTabelaSimbolos(const char *lexema) {
     TNo *atual = tabelaSimbolos;
@@ -522,6 +534,7 @@ TNo* inserirTabelaSimbolos(const char *lexema) {
         tabelaSimbolos = novoNo;
     } else {
         // Se já existem elementos, percorre até encontrar o último
+        //▪ Todo nome de variável deve ser previamente declarado antes de ser utilizado no corpo do código; 
         TNo *atual = tabelaSimbolos;
         while (atual->prox != NULL) {
             atual = atual->prox;
@@ -676,10 +689,16 @@ void imprimirToken(Token t, FILE *saida) {
 //PEGA O PROXIMO TOKEN
 void nextToken(void) {
     tokenAtual = obterToken();
-    if (tokenAtual.type == TOKEN_KEYWORD) {
-        contadorKeyword++;
+    //▪ Não é permitido utilizar palavras reservadas como nome de variável; 
+    //ainda tá errado
+    if(estaNaTabela(tokenAtual) == false){ 
+        erroSemantico("Variavel não foi declarada"); 
+    }else{
+        if (tokenAtual.type == TOKEN_KEYWORD) {
+            contadorKeyword++;
+        }
+        imprimirToken(tokenAtual, arquivoSaida);
     }
-    imprimirToken(tokenAtual, arquivoSaida);
 }
 
 /*
