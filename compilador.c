@@ -79,12 +79,20 @@ typedef enum {
     pontoPonto,   // ..  (limites do vetor)
 } Delimitadores;
 
+// nó da lista encadeada para a tabela de simbolos
+typedef struct _TNo {
+    char ID [21];
+    int endereco;
+    char tipo [7];
+    struct _TNo *prox;
+} TNo;
+
 typedef struct {
     TokenNome type; //Nome do token
     int line; // Para tratamento de erros
 
     union{
-        int table_index; // Índice para Tabela de Símbolos
+        TNo* table_index; // Índice para Tabela de Símbolos
         int int_value; //Valor literal convertido
         double float_value; //Valor literal convertido
         OpRelType op_rel; //operador relacional específico
@@ -173,7 +181,7 @@ void fecharAnalisador(){
 // dá erro de "declarado implicitamente" quando ele finalmente ve a
 // função de verdade com um tipo diferente do que ele tinha "chutado"
 TokenNome classificarPalavra(const char *lexema);
-int inserirTabelaSimbolos(const char *lexema);
+TNo* inserirTabelaSimbolos(const char *lexema);
 void erroLexico(const char *sequencia);
 
 /*
@@ -251,6 +259,8 @@ Token proximoToken() {
         strcpy(lexemaAtual, lexema);
 
         token.type = classificarPalavra(lexema);
+        // char type[7];
+        // strcpy(type, token.type); 
         if (token.type == TOKEN_ID) {
             token.attribute.table_index = inserirTabelaSimbolos(lexema);
         }
@@ -318,6 +328,8 @@ Token proximoToken() {
 
         lexema[i] = '\0';
         token.type = TOKEN_ID;
+        // char type2[10]; 
+        // strcpy(type2, "TOKEN_ID");
         token.attribute.table_index = inserirTabelaSimbolos(lexema);
         return token;
     }
@@ -467,38 +479,73 @@ TokenNome classificarPalavra(const char *lexema) {
 
 // Tabela de simbolos: guarda cada identificador uma unica vez.
 // Se o lexema ja esta na tabela, devolve o indice que ele ja tinha.
-#define MAX_SIMBOLOS 1000
-char tabelaSimbolos[MAX_SIMBOLOS][MAX_LEXEMA]; // texto de cada simbolo
-int linhaSimbolos[MAX_SIMBOLOS];               // linha da primeira ocorrencia
-int totalSimbolos = 0;
+// #define MAX_SIMBOLOS 1000
+// char tabelaSimbolos[MAX_SIMBOLOS][MAX_LEXEMA]; // texto de cada simbolo
+// int linhaSimbolos[MAX_SIMBOLOS];               // linha da primeira ocorrencia
+// int totalSimbolos = 0;
+static int enderecoAtual = 0;
+TNo *tabelaSimbolos = NULL;
 
-int inserirTabelaSimbolos(const char *lexema) {
-    for (int i = 0; i < totalSimbolos; i++) {
-        if (strcmp(tabelaSimbolos[i], lexema) == 0) {
-            return i; // ja existe
-        }
+//função auxiliar pro tipo do id na tabela de simbolos
+const char* tokenParaString(TokenNome t) {
+    switch (t) {
+        case TOKEN_ID:         return "ID";
+        case TOKEN_KEYWORD:    return "KW";
+        case TOKEN_NUM_INT:    return "INT";
+        case TOKEN_NUM_FLOAT:  return "REAL";
+        // Adicione os outros casos (tokens) que você tiver no seu compilador
+        default:               return "DESCONHECIDO";
     }
+}
 
-    if (totalSimbolos == MAX_SIMBOLOS) {
-        fprintf(stderr, "Erro: tabela de simbolos cheia\n");
+TNo* inserirTabelaSimbolos(const char *lexema) {
+    TNo *atual = tabelaSimbolos;
+    while(atual != NULL){
+        if(strcmp(atual->ID, lexema)==0){
+            return atual;
+        }
+        atual = atual->prox;
+    }
+    TNo *novoNo = (TNo*) malloc(sizeof(TNo));
+    if (novoNo == NULL) {
+        fprintf(stderr, "Erro: falha na alocação de memória para a tabela de símbolos\n");
         exit(1);
     }
-
-    strcpy(tabelaSimbolos[totalSimbolos], lexema);
-    linhaSimbolos[totalSimbolos] = linhaAtual;
-    totalSimbolos++;
-    return totalSimbolos - 1;
+    strncpy(novoNo->ID, lexema, sizeof(novoNo->ID) - 1);
+    novoNo->ID[sizeof(novoNo->ID) - 1] = '\0';
+    novoNo->endereco = enderecoAtual++; 
+    strncpy(novoNo->tipo, tokenParaString(classificarPalavra(lexema)), sizeof(novoNo->tipo) - 1);
+    novoNo->tipo[sizeof(novoNo->tipo) - 1] = '\0';
+    novoNo->prox = NULL;    
+    if (tabelaSimbolos == NULL) {
+        // Se a tabela estiver vazia, o novo nó se torna o primeiro
+        tabelaSimbolos = novoNo;
+    } else {
+        // Se já existem elementos, percorre até encontrar o último
+        TNo *atual = tabelaSimbolos;
+        while (atual->prox != NULL) {
+            atual = atual->prox;
+        }
+        // O último elemento agora aponta para o novo nó
+        atual->prox = novoNo;
+    }
+    return novoNo;
 }
 
 void imprimirTabelaSimbolos(FILE *saida) {
     printf("\n=== TABELA DE SIMBOLOS ===\n");
     if (saida != NULL) fprintf(saida, "\n=== TABELA DE SIMBOLOS ===\n");
 
-    for (int i = 0; i < totalSimbolos; i++) {
-        printf("%d | %s | linha %d\n", i, tabelaSimbolos[i], linhaSimbolos[i]);
+    TNo *atual = tabelaSimbolos;
+    int i = 0;
+    while(atual != NULL){
+        printf("Linha: %d |  ID: %s |  Endereço: %d | Tipo: %s\n", i, atual->ID, atual->endereco, atual->tipo);
         if (saida != NULL) {
-            fprintf(saida, "%d | %s | linha %d\n", i, tabelaSimbolos[i], linhaSimbolos[i]);
+            fprintf(saida, "Linha: %d | ID: %s |  Endereço: %d |  Tipo: %s\n", i, atual->ID, atual->endereco, atual->tipo);
         }
+
+        atual = atual->prox;
+        i++;
     }
 }
 
@@ -587,7 +634,7 @@ void imprimirToken(Token t, FILE *saida) {
 
     switch (t.type) {
         case TOKEN_ID:
-            sprintf(buffer, "%d# IDENTIFICADOR | %d", t.line, t.attribute.table_index);
+            sprintf(buffer, "%d# IDENTIFICADOR | %s", t.line, t.attribute.table_index->ID);
             break;
         case TOKEN_KEYWORD:
             sprintf(buffer, "%d# PALAVRA_RESERVADA | %d", t.line, contadorKeyword);
@@ -1455,6 +1502,18 @@ void analisadorSintatico(FILE *arq) {
 
     // imprime a tabela de simbolos ao final
     imprimirTabelaSimbolos(arquivoSaida);
+}
+
+//analisador semantico
+void analisadorSemantico(){
+    //
+}
+
+//erro semantico
+void erroSemantico(const char *sequencia) {
+    fprintf(stderr, "ERRO SEMÂNTICO na linha %d: \"%s\"\n", linhaAtual, sequencia);
+    fecharAnalisador();
+    exit(1);
 }
 
 // esse main() aqui é só pra eu conseguir testar se o lexico tá funcionando.
