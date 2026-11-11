@@ -86,8 +86,15 @@ typedef struct _TNo {
     char ID [21];
     int endereco;
     char tipo [7];
+    char tipoSemantico[15]; // Armazena inteiro, real, caractere, logico
+    bool declarada;         // Marca se passou pelo bloco var
     struct _TNo *prox;
 } TNo;
+
+// Buffer para gerenciar múltiplas variáveis na mesma linha (ex: n1, n2: inteiro)
+#define MAX_VAR_DECL 50
+char bufferIdsDeclaracao[MAX_VAR_DECL][MAX_LEXEMA];
+int qtdIdsDeclaracao = 0;
 
 typedef struct {
     TokenNome type; //Nome do token
@@ -529,6 +536,10 @@ TNo* inserirTabelaSimbolos(const char *lexema) {
     novoNo->endereco = enderecoAtual++; 
     strncpy(novoNo->tipo, tokenParaString(classificarPalavra(lexema)), sizeof(novoNo->tipo) - 1);
     novoNo->tipo[sizeof(novoNo->tipo) - 1] = '\0';
+
+    strcpy(novoNo->tipoSemantico, "INDEFINIDO");
+    novoNo->declarada = false;
+
     novoNo->prox = NULL;    
     if (tabelaSimbolos == NULL) {
         // Se a tabela estiver vazia, o novo nó se torna o primeiro
@@ -563,6 +574,46 @@ void imprimirTabelaSimbolos(FILE *saida) {
     }
 }
 
+void registrarIdsParaDeclaracao(const char *nome) {
+    if (qtdIdsDeclaracao < MAX_VAR_DECL) {
+        strcpy(bufferIdsDeclaracao[qtdIdsDeclaracao++], nome);
+    }
+}
+
+void aplicarTipoNasVariaveisDeclaradas(const char *tipo) {
+    for (int i = 0; i < qtdIdsDeclaracao; i++) {
+        TNo *atual = tabelaSimbolos;
+        while (atual != NULL) {
+            if (strcmp(atual->ID, bufferIdsDeclaracao[i]) == 0) {
+                if (atual->declarada) {
+                    char msg[100];
+                    sprintf(msg, "Variavel '%s' ja foi declarada.", atual->ID);
+                    erroSemantico(msg);
+                }
+                strcpy(atual->tipoSemantico, tipo);
+                atual->declarada = true;
+                break;
+            }
+            atual = atual->prox;
+        }
+    }
+    qtdIdsDeclaracao = 0; 
+}
+
+void verificarVariavelDeclarada(const char *nome) {
+    TNo *atual = tabelaSimbolos;
+    while (atual != NULL) {
+        if (strcmp(atual->ID, nome) == 0) {
+            if (!atual->declarada) {
+                char msg[120];
+                sprintf(msg, "Variavel '%s' nao declarada no bloco var.", nome);
+                erroSemantico(msg);
+            }
+            return;
+        }
+        atual = atual->prox;
+    }
+}
 
 /* 5. FORMATAÇÃO E ARQUIVO DE SAÍDA
  * [X] Formatar a string de saída no padrão exigido: Número da Linha do Átomo# NomeToken | Atributo
