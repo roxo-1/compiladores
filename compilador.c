@@ -942,7 +942,10 @@ void expressao(){
 
 // Operando de condicao do relatorio: (id | inteiro | real)
 void operandoSimples() {
-    if (tokenAtual.type == TOKEN_ID || tokenAtual.type == TOKEN_NUM_INT || tokenAtual.type == TOKEN_NUM_FLOAT) {
+    if (tokenAtual.type == TOKEN_ID) {
+        verificarVariavelDeclarada(lexemaAtual); // Validação Semântica
+        nextToken();
+    } else if (tokenAtual.type == TOKEN_NUM_INT || tokenAtual.type == TOKEN_NUM_FLOAT) {
         nextToken();
     } else {
         erroSintatico("Esperado identificador, inteiro ou real.");
@@ -979,7 +982,13 @@ int ehDelimitador(Delimitadores d) {
 
 // [X] variavel -> id ('[' expressao ']')?
 void variavel() {
+    char nomeVar[MAX_LEXEMA];
+    strcpy(nomeVar, lexemaAtual); // Guarda o identificador atual
+
     casaToken(TOKEN_ID);
+    
+    verificarVariavelDeclarada(nomeVar); // Validação Semântica
+
     if (ehDelimitador(abreColchetes)) {
         nextToken(); // consome '['
         expressao();
