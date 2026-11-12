@@ -1025,7 +1025,10 @@ void leitura() {
     } else {
         erroSintatico("Esperado '(' apos 'leia'.");
     }
-
+    
+    if (tokenAtual.type == TOKEN_ID) {
+        verificarVariavelDeclarada(lexemaAtual); // Validação Semântica
+    }
     casaToken(TOKEN_ID); // Leitura: leia ( id )
 
     if (ehDelimitador(fechaParenteses)) {
@@ -1313,6 +1316,8 @@ void tipoBase() {
         strcmp(lexemaAtual, "real") == 0 || 
         strcmp(lexemaAtual, "caractere") == 0 || 
         strcmp(lexemaAtual, "logico") == 0)) {
+        
+        aplicarTipoNasVariaveisDeclaradas(lexemaAtual); // Validação Semântica
         nextToken(); // consome o tipo da variável
     } else {
         erroSintatico("Esperado um tipo valido (inteiro, real, caractere ou logico).");
@@ -1496,6 +1501,7 @@ void algoritmo() {
 void idLista() {
     // Reconhece o primeiro identificador
     if (tokenAtual.type == TOKEN_ID) {
+        registrarIdsParaDeclaracao(lexemaAtual); // Validação Semântica
         nextToken();
     } else {
         erroSintatico("Esperado identificador na lista de variaveis.");
@@ -1505,6 +1511,7 @@ void idLista() {
     while (tokenAtual.type == TOKEN_DELIMITADORES && tokenAtual.attribute.delimitadores == virgula) {
         nextToken(); // consome ','
         if (tokenAtual.type == TOKEN_ID) {
+            registrarIdsParaDeclaracao(lexemaAtual); // Validação Semântica
             nextToken(); // consome o próximo ID
         } else {
             erroSintatico("Esperado identificador apos ',' na lista de variaveis.");
