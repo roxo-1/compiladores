@@ -1597,6 +1597,12 @@ void erroSemantico(const char *sequencia) {
     fecharAnalisador();
     exit(1);
 }
+int proximo_rotulo(){
+    //pass
+}
+void* busca_tabela_simbolos(atributo_ID){
+    //pass
+}
 
 // esse main() aqui é só pra eu conseguir testar se o lexico tá funcionando.
 // ainda não é a versão final (falta formatar do jeito que o item 5 pede
