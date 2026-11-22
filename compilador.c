@@ -159,7 +159,7 @@ void erroSemantico(const char *sequencia);
 void iniciar_mepa();
 void fechar_mepa();
 void gera_codigo(const char *instrucao, const char *argumento);
-int proximo_rotulo();
+void proximo_rotulo();
 void busca_tabela_simbolos(char *atributo_ID);
 
 /*
