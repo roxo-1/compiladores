@@ -12,6 +12,7 @@ FILE *arquivoSaida = NULL;
 int contadorKeyword = 0;
 //Saída MEPA
 FILE *saida_mepa = NULL;
+static int contadorRotulo = 0;
 
 // esses dois enum tiveram que vir para cima do struct Token, porque o C
 // não deixa usar um tipo antes dele existir (dava erro de compilação
@@ -159,7 +160,7 @@ void erroSemantico(const char *sequencia);
 void iniciar_mepa();
 void fechar_mepa();
 void gera_codigo(const char *instrucao, const char *argumento);
-void proximo_rotulo();
+int proximo_rotulo();
 void busca_tabela_simbolos(char *atributo_ID);
 
 /*
@@ -1617,8 +1618,10 @@ void fechar_mepa(){
         fclose(saida_mepa);
     }
 }
-void proximo_rotulo(){
-    //pass
+//foi usado IA aqui para entender se a função foi feita de corretamente. Confusão se a função devia ser recursiva.
+int proximo_rotulo(){
+   contadorRotulo++;
+   return contadorRotulo;
 }
 void busca_tabela_simbolos(char *atributo_ID){
     //pass
