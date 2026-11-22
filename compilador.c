@@ -10,7 +10,8 @@ char lexemaAtual[MAX_LEXEMA];
 // #define OP_NE     6
 FILE *arquivoSaida = NULL;
 int contadorKeyword = 0;
-    
+//Saída MEPA
+FILE *saida_mepa = NULL;
 
 // esses dois enum tiveram que vir para cima do struct Token, porque o C
 // não deixa usar um tipo antes dele existir (dava erro de compilação
@@ -155,6 +156,11 @@ void declaracoesRotinas();
 void imprimirTabelaSimbolos(FILE *saida);
 bool estaNaTabela(const char *lexema);
 void erroSemantico(const char *sequencia);
+void iniciar_mepa();
+void fechar_mepa();
+void gera_codigo(const char *instrucao, const char *argumento);
+int proximo_rotulo();
+void busca_tabela_simbolos(char *atributo_ID);
 
 /*
  * TODO LIST - ETAPA 2: ANALISADOR LÉXICO (MINIVISUALG)
@@ -1597,16 +1603,26 @@ void erroSemantico(const char *sequencia) {
     fecharAnalisador();
     exit(1);
 }
-int proximo_rotulo(){
-    //pass
-}
-void* busca_tabela_simbolos(atributo_ID){
-    //pass
+//foi utilizado inteligência artificial para compreender o enunciado (apenas a parte de geração de código), e um "TODO"
+void iniciar_mepa(){
+    saida_mepa = fopen("saida_mepa.txt", "w");
+    if(saida_mepa == NULL){ 
+        printf("Erro ao criar o arquivo da saída MEPA");
+        exit(1);
+    }
 }
 
-// esse main() aqui é só pra eu conseguir testar se o lexico tá funcionando.
-// ainda não é a versão final (falta formatar do jeito que o item 5 pede
-// e salvar num arquivo de log)
+void fechar_mepa(){
+    if(saida_mepa != NULL){
+        fclose(saida_mepa);
+    }
+}
+void proximo_rotulo(){
+    //pass
+}
+void busca_tabela_simbolos(char *atributo_ID){
+    //pass
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -1616,26 +1632,27 @@ int main(int argc, char *argv[]) {
 
     FILE *arq = fopen(argv[1], "r");
     if (arq == NULL) {
-        fprintf(stderr, "Nao foi possivel abrir o arquivo de entrada: %s\n", argv[1]);
+        fprintf(stderr, "Não foi possivel abrir o arquivo de entrada: %s\n", argv[1]);
         return 1;
     }
 
-    // Tenta criar o arquivo .lex, mas se o sistema negar o acesso, 
-    // ele NAO trava e continua imprimindo apenas no terminal (stdout)
     char nomeSaida[256];
     sprintf(nomeSaida, "%s.lex", argv[1]);
     arquivoSaida = fopen(nomeSaida, "w");
-
     if (arquivoSaida == NULL) {
         // Apenas avisa no terminal sem dar crash/Access Denied
         fprintf(stderr, "[AVISO] Nao foi possivel criar '%s' (Acesso Negado no disco). Rodando apenas no terminal.\n\n", nomeSaida);
     }
-
+    
     analisadorSintatico(arq);
+    iniciar_mepa();
+    //INPP
+    //CODIGO
+    fechar_mepa();
 
     if (arquivoSaida != NULL) {
         fclose(arquivoSaida);
     }
-
+    
     return 0;
 }
