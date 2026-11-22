@@ -159,9 +159,9 @@ bool estaNaTabela(const char *lexema);
 void erroSemantico(const char *sequencia);
 void iniciar_mepa();
 void fechar_mepa();
-void gera_codigo(const char *instrucao, const char *argumento);
+void geradorCodigoIntermediario(const char *instrucao, const char *argumento);
 int proximo_rotulo();
-int busca_tabela_simbolos(char *atributo_ID[]);
+int busca_tabela_simbolos(char atributo_ID[]);
 
 /*
  * TODO LIST - ETAPA 2: ANALISADOR LÉXICO (MINIVISUALG)
@@ -746,7 +746,6 @@ void imprimirToken(Token t, FILE *saida) {
 }
 
 //PEGA O PROXIMO TOKEN
-//PEGA O PROXIMO TOKEN
 void nextToken(void) {
     tokenAtual = obterToken();
     if (tokenAtual.type == TOKEN_KEYWORD) {
@@ -1009,6 +1008,8 @@ void variavel() {
 
 // [X] atribuicao -> variavel '<-' expressao
 void atribuicao() {
+    char var_atual[256];
+    strcpy(var_atual, lexemaAtual); //guarda o onme da variavel por causa do greador de código
     // a variavel ja foi consumida por comando() (atribuicao e chamada comecam com id)
     // so aceita o token de atribuicao <-
     if (tokenAtual.type == TOKEN_OP_ATRIBUTION) {
@@ -1017,10 +1018,12 @@ void atribuicao() {
         erroSintatico("Operador de atribuicao '<-' esperado.");
     }
     expressao();
+    geradorCodigoIntermediario("ARMZ", var_atual); //armazena o valor 
 }
 
 // [X] leitura -> leia '(' variavel ')'
 void leitura() {
+    char var_lida[256];//variavel para o gerador de código intermediário
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "leia") == 0) {
         nextToken(); // consome 'leia'
     } else {
@@ -1034,6 +1037,7 @@ void leitura() {
     }
     
     if (tokenAtual.type == TOKEN_ID) {
+        strcpy(var_lida, lexemaAtual);
         verificarVariavelDeclarada(lexemaAtual); // Validação Semântica
     }
     casaToken(TOKEN_ID); // Leitura: leia ( id )
@@ -1043,6 +1047,8 @@ void leitura() {
     } else {
         erroSintatico("Esperado ')' apos variavel em 'leia'.");
     }
+    geradorCodigoIntermediario("LEIT", NULL);//le a var
+    geradorCodigoIntermediario("ARMZ", var_lida);//armazena var
 }
 
 // [X] escrita -> (escreva | escreval) '(' expressao (',' expressao)* ')'
@@ -1061,10 +1067,12 @@ void escrita() {
     }
 
     expressao();
+    geradorCodigoIntermediario("IMPR", NULL);//escrita
 
     while (ehDelimitador(virgula)) {
         nextToken(); // consome ','
         expressao();
+        geradorCodigoIntermediario("IMPR", NULL);//escrita
     }
 
     if (ehDelimitador(fechaParenteses)) {
@@ -1076,6 +1084,12 @@ void escrita() {
 
 // [X] condicional -> se '(' expressao ')' entao comando* (senao comando*)? fimse
 void condicional() {
+    int r1 = proximo_rotulo();
+    int r2 = proximo_rotulo();
+    char rot1[20], rot2[20];
+    sprintf(rot1, "R%d", r1);
+    sprintf(rot2, "R%d", r2);
+
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "se") == 0) {
         nextToken(); // consome 'se'
     } else {
@@ -1095,6 +1109,7 @@ void condicional() {
     } else {
         erroSintatico("Esperado ')' apos expressao condicional.");
     }
+    geradorCodigoIntermediario("DSVF", rot1);//desvia se falso
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "entao") == 0) {
         nextToken(); // consome 'entao'
@@ -1105,8 +1120,13 @@ void condicional() {
     codigo(); // Bloco de comandos no ramo 'entao'
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "senao") == 0) {
+        geradorCodigoIntermediario("DSVS", rot2); //desvia sempre
+        geradorCodigoIntermediario(rot1, NULL);//marca o rotulo 
         nextToken(); // consome 'senao'
         codigo();    // Bloco de comandos no ramo 'senao'
+        geradorCodigoIntermediario(rot2, NULL);//marca o rotulo
+    }else {
+        geradorCodigoIntermediario(rot1, NULL); //marca o rotulo se não tem
     }
 
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimse") == 0) {
@@ -1164,6 +1184,12 @@ void repeticaoPara() {
 
 // [X] repeticao_enquanto -> enquanto '(' expressao ')' faca comando* fimenquanto
 void repeticaoEnquanto() {
+    int r_inicio = proximo_rotulo();
+    int r_fim = proximo_rotulo();
+    char rotInicio[20], rotFim[20];
+    sprintf(rotInicio, "R%d", r_inicio);
+    sprintf(rotFim, "R%d", r_fim);
+    geradorCodigoIntermediario(rotInicio, NULL);//marca o inicio do loop
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "enquanto") == 0) {
         nextToken(); // consome 'enquanto'
     } else {
@@ -1183,14 +1209,15 @@ void repeticaoEnquanto() {
     } else {
         erroSintatico("Esperado ')' apos expressao do 'enquanto'.");
     }
-
+    geradorCodigoIntermediario("DSVF", rotFim);//desvia se falso para sair do loop
     // a regra do enquanto nao tem 'faca'; aceita-se opcionalmente (VisuAlg)
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "faca") == 0) {
         nextToken(); // consome 'faca'
     }
 
     codigo();
-
+    geradorCodigoIntermediario("DSVS", rotInicio);//desvia sempre para o inicio do loop
+    geradorCodigoIntermediario(rotFim, NULL);//marca o fim do loop
     if (tokenAtual.type == TOKEN_KEYWORD && strcmp(lexemaAtual, "fimenquanto") == 0) {
         nextToken(); // consome 'fimenquanto'
     } else {
@@ -1592,10 +1619,15 @@ void analisadorSintatico(FILE *arq) {
     // imprime a tabela de simbolos ao final
     imprimirTabelaSimbolos(arquivoSaida);
 }
-
-//analisador semantico
-void analisadorSemantico(){
-    //
+//uso de ia para ajudar na compreensão na lógica exigida
+void geradorCodigoIntermediario(const char *instrucao, const char *argumento){
+    if(saida_mepa !=NULL){
+        if(argumento != NULL){
+            fprintf(saida_mepa, "%s %s\n",instrucao, argumento);
+        } else{
+            fprintf(saida_mepa, "%s\n",instrucao);
+        }
+    }
 }
 
 //erro semantico
@@ -1623,7 +1655,7 @@ int proximo_rotulo(){
    contadorRotulo++;
    return contadorRotulo;
 }
-int busca_tabela_simbolos(char *atributo_ID[]){//parâmetro o atributo atributo_ID do token corrente (um vetor de caracteres)
+int busca_tabela_simbolos(char atributo_ID[]){//parâmetro o atributo atributo_ID do token corrente (um vetor de caracteres)
     //já que a tabela de simbolos  foi implementada de forma parecida com uma lista, a busca tem que ser parecido com percorrer/buscar o valor, no caso o atributo_ID em lista tbm
     TNo *noAtual = tabelaSimbolos;
     while (noAtual != NULL){
@@ -1633,6 +1665,7 @@ int busca_tabela_simbolos(char *atributo_ID[]){//parâmetro o atributo atributo_
         }
         noAtual = noAtual->prox; //próximo n
     }
+    exit(0);//retorno por causa do warning
 }
 
 int main(int argc, char *argv[]) {
@@ -1654,11 +1687,10 @@ int main(int argc, char *argv[]) {
         // Apenas avisa no terminal sem dar crash/Access Denied
         fprintf(stderr, "[AVISO] Nao foi possivel criar '%s' (Acesso Negado no disco). Rodando apenas no terminal.\n\n", nomeSaida);
     }
-    
-    analisadorSintatico(arq);
     iniciar_mepa();
-    //INPP
-    //CODIGO
+    geradorCodigoIntermediario("INPP", NULL);
+    analisadorSintatico(arq);
+    geradorCodigoIntermediario("PARA", NULL);
     fechar_mepa();
 
     if (arquivoSaida != NULL) {
