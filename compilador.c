@@ -1631,7 +1631,7 @@ int busca_tabela_simbolos(char *atributo_ID[]){//parâmetro o atributo atributo_
             // retorna o endereço da variável armazenado na minitabela de símbolos
             return noAtual->endereco;
         }
-        noAtual = noAtual->prox; ó//próximo n
+        noAtual = noAtual->prox; //próximo n
     }
 }
 
