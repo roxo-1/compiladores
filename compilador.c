@@ -161,7 +161,7 @@ void iniciar_mepa();
 void fechar_mepa();
 void gera_codigo(const char *instrucao, const char *argumento);
 int proximo_rotulo();
-void busca_tabela_simbolos(char *atributo_ID);
+int busca_tabela_simbolos(char *atributo_ID[]);
 
 /*
  * TODO LIST - ETAPA 2: ANALISADOR LÉXICO (MINIVISUALG)
@@ -1623,8 +1623,16 @@ int proximo_rotulo(){
    contadorRotulo++;
    return contadorRotulo;
 }
-void busca_tabela_simbolos(char *atributo_ID){
-    //pass
+int busca_tabela_simbolos(char *atributo_ID[]){//parâmetro o atributo atributo_ID do token corrente (um vetor de caracteres)
+    //já que a tabela de simbolos  foi implementada de forma parecida com uma lista, a busca tem que ser parecido com percorrer/buscar o valor, no caso o atributo_ID em lista tbm
+    TNo *noAtual = tabelaSimbolos;
+    while (noAtual != NULL){
+        if(strcmp(noAtual->ID, atributo_ID)==0){//compara para ver se o ID do no atual bate com o id que foi passado como parametro
+            // retorna o endereço da variável armazenado na minitabela de símbolos
+            return noAtual->endereco;
+        }
+        noAtual = noAtual->prox; ó//próximo n
+    }
 }
 
 int main(int argc, char *argv[]) {
