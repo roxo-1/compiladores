@@ -589,36 +589,36 @@ void registrarIdsParaDeclaracao(const char *nome) {
 
 void aplicarTipoNasVariaveisDeclaradas(const char *tipo) {
     for (int i = 0; i < qtdIdsDeclaracao; i++) {
-        TNo *atual = tabelaSimbolos;
-        while (atual != NULL) {
-            if (strcmp(atual->ID, bufferIdsDeclaracao[i]) == 0) {
-                if (atual->declarada) {
+        TNo *Noatual = tabelaSimbolos;
+        while (Noatual != NULL) {
+            if (strcmp(Noatual->ID, bufferIdsDeclaracao[i]) == 0) {
+                if (Noatual->declarada) {
                     char msg[100];
-                    sprintf(msg, "Variavel '%s' ja foi declarada.", atual->ID);
+                    sprintf(msg, "Variavel '%s' ja foi declarada.", Noatual->ID);
                     erroSemantico(msg);
                 }
-                strcpy(atual->tipoSemantico, tipo);
-                atual->declarada = true;
+                strcpy(Noatual->tipoSemantico, tipo);
+                Noatual->declarada = true;
                 break;
             }
-            atual = atual->prox;
+            Noatual = Noatual->prox;
         }
     }
     qtdIdsDeclaracao = 0; 
 }
 
 void verificarVariavelDeclarada(const char *nome) {
-    TNo *atual = tabelaSimbolos;
-    while (atual != NULL) {
-        if (strcmp(atual->ID, nome) == 0) {
-            if (!atual->declarada) {
+    TNo *Noatual = tabelaSimbolos;
+    while (Noatual != NULL) {
+        if (strcmp(Noatual->ID, nome) == 0) {
+            if (!Noatual->declarada) {
                 char msg[120];
                 sprintf(msg, "Variavel '%s' nao declarada no bloco var.", nome);
                 erroSemantico(msg);
             }
             return;
         }
-        atual = atual->prox;
+        Noatual = Noatual->prox;
     }
 }
 

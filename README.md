@@ -10,11 +10,9 @@
 
 ### Objetivo
 
-A proposta desta atividade é a implementação das duas primeiras etapas do *front-end* de um compilador para a linguagem **MiniVisualg**: a análise léxica e a análise sintática.
+A proposta desta atividade é a implementação das duas primeiras etapas do *front-end* de um compilador para a linguagem **MiniVisualg**: a análise léxica, sintática, semântica e geração intermediária de código.
 
-O analisador léxico é responsável por identificar os *tokens* presentes no código-fonte, enquanto o analisador sintático utiliza esses *tokens* para verificar se o programa segue a gramática definida para a linguagem.
-
-As duas etapas funcionam de forma integrada. O analisador sintático solicita os próximos *tokens* por meio da função `nextToken()`, que realiza chamadas ao analisador léxico através da função `obterToken()`.
+As etapas funcionam de forma integrada: o léxico identifica os tokens, o sintático valida a gramática identificada (ambas finalizadas na entrega passada), o semântico valida as regras semânticos (como declaração de variáveis e tipos de variáveis) e o gerador de código intermediário traduz o programa para instruções executáveis na MEPA.
 
 ---
 
@@ -318,6 +316,28 @@ O fluxo pode ser resumido da seguinte forma:
           Programa aceito
              ou erro
 ```
+---
+# ETAPA 4 - Analisador Semântico
+## Funcionamento
+O analisador semântico utiliza dos tokens definidos pelas etapas anteriores para verificar a conformidade com a GLC estendida.
+
+Durante o processo, atua-se em conjunto com a tabela de símbolos (implementada segundo as instruções da professora) para verificar as regras semânticas, como:
+
+Validação de Variáveis: Sempre que uma variável é mencionada, invoca as funções de verificação para garantir que a variável foi devidamente declarada. Caso contrário, um erro semântico é disparado e a compilação é abortada.
+
+Se não existir nenhum erro semântico segue para a próxima etapa.
+
+---
+
+# ETAPA 5 - Geração de Código Intermediária
+
+Inicializa o arquivo de saída saida_mepa.txt com a instrução de início do MEPA (INPP).
+
+Traduz os comandos da linguagem para instruções MEPA compatíveis com o interpretador InterprMEPA, utilizando nomes de variáveis em formato string conforme exigido.
+
+Utiliza um gerador de rótulos sequenciais (proximo_rotulo()) para controlar os desvios condicionais e de repetição (se e enquanto).
+
+Finaliza o arquivo com a instrução de paragem (PARA).
 
 ---
 
