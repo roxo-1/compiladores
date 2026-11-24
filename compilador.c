@@ -1619,7 +1619,9 @@ void analisadorSintatico(FILE *arq) {
     // imprime a tabela de simbolos ao final
     imprimirTabelaSimbolos(arquivoSaida);
 }
-//uso de ia para ajudar na compreensão na lógica exigida
+
+//foi utilizado inteligência artificial para compreender o enunciado (apenas a parte de geração de código)
+//uso de ia para ajudar na compreensão na lógica exigida no geradorCodigoIntermediario
 void geradorCodigoIntermediario(const char *instrucao, const char *argumento){
     if(saida_mepa !=NULL){
         if(argumento != NULL){
@@ -1636,7 +1638,7 @@ void erroSemantico(const char *sequencia) {
     fecharAnalisador();
     exit(1);
 }
-//foi utilizado inteligência artificial para compreender o enunciado (apenas a parte de geração de código), e um "TODO"
+
 void iniciar_mepa(){
     saida_mepa = fopen("saida_mepa.txt", "w");
     if(saida_mepa == NULL){ 
