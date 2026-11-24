@@ -589,36 +589,36 @@ void registrarIdsParaDeclaracao(const char *nome) {
 
 void aplicarTipoNasVariaveisDeclaradas(const char *tipo) {
     for (int i = 0; i < qtdIdsDeclaracao; i++) {
-        TNo *Noatual = tabelaSimbolos;
-        while (Noatual != NULL) {
-            if (strcmp(Noatual->ID, bufferIdsDeclaracao[i]) == 0) {
-                if (Noatual->declarada) {
+        TNo *noAtual = tabelaSimbolos;
+        while (noAtual != NULL) {
+            if (strcmp(noAtual->ID, bufferIdsDeclaracao[i]) == 0) {
+                if (noAtual->declarada) {
                     char msg[100];
-                    sprintf(msg, "Variavel '%s' ja foi declarada.", Noatual->ID);
+                    sprintf(msg, "Variavel '%s' ja foi declarada.", noAtual->ID);
                     erroSemantico(msg);
                 }
-                strcpy(Noatual->tipoSemantico, tipo);
-                Noatual->declarada = true;
+                strcpy(noAtual->tipoSemantico, tipo);
+                noAtual->declarada = true;
                 break;
             }
-            Noatual = Noatual->prox;
+            noAtual = noAtual->prox;
         }
     }
     qtdIdsDeclaracao = 0; 
 }
 
 void verificarVariavelDeclarada(const char *nome) {
-    TNo *Noatual = tabelaSimbolos;
-    while (Noatual != NULL) {
-        if (strcmp(Noatual->ID, nome) == 0) {
-            if (!Noatual->declarada) {
+    TNo *noAtual = tabelaSimbolos;
+    while (noAtual != NULL) {
+        if (strcmp(noAtual->ID, nome) == 0) {
+            if (!noAtual->declarada) {
                 char msg[120];
                 sprintf(msg, "Variavel '%s' nao declarada no bloco var.", nome);
                 erroSemantico(msg);
             }
             return;
         }
-        Noatual = Noatual->prox;
+        noAtual = noAtual->prox;
     }
 }
 
@@ -1619,7 +1619,9 @@ void analisadorSintatico(FILE *arq) {
     // imprime a tabela de simbolos ao final
     imprimirTabelaSimbolos(arquivoSaida);
 }
-
+/*
+ETAPA 5 - GERAÇÃO DE CÓDIGO INTERMEDIÁRIO
+*/
 //foi utilizado inteligência artificial para compreender o enunciado (apenas a parte de geração de código)
 //uso de ia para ajudar na compreensão na lógica exigida no geradorCodigoIntermediario
 void geradorCodigoIntermediario(const char *instrucao, const char *argumento){
@@ -1642,19 +1644,20 @@ void erroSemantico(const char *sequencia) {
 void iniciar_mepa(){
     saida_mepa = fopen("saida_mepa.txt", "w");
     if(saida_mepa == NULL){ 
-        printf("Erro ao criar o arquivo da saída MEPA");
+        printf("Erro ao criar o arquivo da saída MEPA");//abre arquivo de saída dessa entrega
+        //foi criado um arquivo separado para esta entrega com as instruções MEPA 
         exit(1);
     }
 }
 
 void fechar_mepa(){
     if(saida_mepa != NULL){
-        fclose(saida_mepa);
+        fclose(saida_mepa);//fecha o arquivo de saída dessa entrega
     }
 }
 //foi usado IA aqui para entender se a função foi feita de corretamente. Confusão se a função devia ser recursiva.
 int proximo_rotulo(){
-   contadorRotulo++;
+   contadorRotulo++;//variável global
    return contadorRotulo;
 }
 //uso de IA para entender a lógica da função
