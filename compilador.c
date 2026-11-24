@@ -1655,6 +1655,7 @@ int proximo_rotulo(){
    contadorRotulo++;
    return contadorRotulo;
 }
+//uso de IA para entender a lógica da função
 int busca_tabela_simbolos(char atributo_ID[]){//parâmetro o atributo atributo_ID do token corrente (um vetor de caracteres)
     //já que a tabela de simbolos  foi implementada de forma parecida com uma lista, a busca tem que ser parecido com percorrer/buscar o valor, no caso o atributo_ID em lista tbm
     TNo *noAtual = tabelaSimbolos;
